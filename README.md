@@ -1,3 +1,5 @@
+(Please note that this app is still experimental, do not guarantee that it will work.)
+
 # rust Bundler
 
 Wrap Rust executables in OS-specific app bundles.
@@ -9,7 +11,6 @@ This is a fork of the tauri-bundler(https://github.com/tauri-apps/tauri/tree/dev
 
 ## Configuration
 
-Please note that this app is still experimental, do not guarantee that it will work.
 
 ### General settings
 
