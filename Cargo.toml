@@ -1,17 +1,18 @@
 workspace = { }
 
 [package]
-name = "tauri-bundler"
-version = "1.1.2"
+name = "simple-rust-bundler"
+version = "0.0.1"
 authors = [
+  "Masato Yuna <masato.yuna@gmail.com>",
   "George Burton <burtonageo@gmail.com>",
   "Tauri Programme within The Commons Conservancy"
 ]
 categories = [ "command-line-utilities", "development-tools::cargo-plugins" ]
 license = "Apache-2.0 OR MIT"
-keywords = [ "bundle", "cargo", "tauri" ]
-repository = "https://github.com/tauri-apps/tauri"
-description = "Wrap rust executables in OS-specific app bundles for Tauri"
+keywords = []
+repository = "https://github.com/generalworksinc/simple-rust-bundler.git"
+description = "rust bundle tool from tauri bundler fork"
 edition = "2021"
 rust-version = "1.60"
 exclude = [ "CHANGELOG.md", "/target", "rustfmt.toml" ]
