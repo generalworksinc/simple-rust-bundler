@@ -1,14 +1,15 @@
-# Tauri Bundler
+# rust Bundler
 
 Wrap Rust executables in OS-specific app bundles.
 
 ## About
 
-This is a fork of the awesome [cargo-bundle](https://github.com/burtonageo/cargo-bundle), turned into a library used by the [Tauri CLI](../cli).
+This is a fork of the tauri-bundler(https://github.com/tauri-apps/tauri/tree/dev/tooling/bundler)
+> tauri-bunder is a fork of the awesome [cargo-bundle](https://github.com/burtonageo/cargo-bundle), turned into a library used by the [Tauri CLI](../cli).
 
 ## Configuration
 
-Tauri automatically loads configurations from the `tauri.conf.json > tauri > bundle` object, but this library doesn't rely on it and can be used by non-Tauri apps.
+Please note that this app is still experimental, do not guarantee that it will work.
 
 ### General settings
 
