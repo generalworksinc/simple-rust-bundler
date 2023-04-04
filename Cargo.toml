@@ -65,5 +65,5 @@ ar = "0.9.0"
 md5 = "0.7.0"
 
 [lib]
-name = "simple_rust_bundler"
+name = "simple_bundler"
 path = "src/lib.rs"
