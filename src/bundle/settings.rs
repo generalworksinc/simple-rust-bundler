@@ -156,6 +156,8 @@ pub struct DebianSettings {
   /// List of custom files to add to the deb package.
   /// Maps the path on the debian package to the path of the file to include (relative to the current working directory).
   pub files: HashMap<PathBuf, PathBuf>,
+  pub postinst_path: Option<String>,
+  pub prerm_path: Option<String>,
 }
 
 /// The macOS bundle settings.
