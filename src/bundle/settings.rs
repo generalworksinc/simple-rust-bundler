@@ -249,6 +249,8 @@ pub struct WixSettings {
   pub dialog_image_path: Option<PathBuf>,
   /// Enables FIPS compliant algorithms.
   pub fips_compliant: bool,
+  /// version 3 or 4
+  pub version: Option<u16>,
 }
 
 /// Settings specific to the NSIS implementation.
