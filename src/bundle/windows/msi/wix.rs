@@ -30,9 +30,12 @@ use tauri_utils::{config::WebviewInstallMode, resources::resource_relpath};
 use uuid::Uuid;
 
 // URLS for the WIX toolchain.  Can be used for cross-platform compilation.
-pub const WIX_URL: &str =
+pub const WIX_URL_V3: &str =
   "https://github.com/wixtoolset/wix3/releases/download/wix3112rtm/wix311-binaries.zip";
-pub const WIX_SHA256: &str = "2c1888d5d1dba377fc7fa14444cf556963747ff9a0a289a3599cf09da03b9e2e";
+pub const WIX_SHA256_V3: &str = "2c1888d5d1dba377fc7fa14444cf556963747ff9a0a289a3599cf09da03b9e2e";
+
+pub const WIX_URL_V4: &str = "https://www.nuget.org/api/v2/package/wix/4.0.0";
+pub const WIX_SHA256_V4: &str = "b134c7d8b335a32c94363a763bbf78fd5d351761007374b434f6aaf3111ff94c";
 
 // For Cross Platform Compilation.
 
@@ -221,10 +224,14 @@ fn generate_guid(key: &[u8]) -> Uuid {
 }
 
 // Specifically goes and gets Wix and verifies the download via Sha256
-pub fn get_and_extract_wix(path: &Path) -> crate::Result<()> {
+pub fn get_and_extract_wix(path: &Path, version: u16) -> crate::Result<()> {
   info!("Verifying wix package");
 
-  let data = download_and_verify(WIX_URL, WIX_SHA256, HashAlgorithm::Sha256)?;
+  let data = if version == 4 {
+    download_and_verify(WIX_URL_V4, WIX_SHA256_V4, HashAlgorithm::Sha256)?
+  } else {
+    download_and_verify(WIX_URL_V3, WIX_SHA256_V3, HashAlgorithm::Sha256)?
+  };
 
   info!("extracting WIX");
 
@@ -288,9 +295,29 @@ fn run_convert(
   wix_toolset_path: &Path,
   wxs_file_path: &Path) -> crate::Result<()> {
 
-  Command::new(wix_toolset_path.join("wix.exe")).arg("convert").arg(wxs_file_path.join("*.wxs")).current_dir(wxs_file_path)
-    .output_ok()
-    .context("error running candle.exe")?;
+  let cmd_path = wix_toolset_path.join("wix.exe");
+  let path = display_path(wxs_file_path);
+  println!("cmd path: {:?}, exist: {:?}", cmd_path, cmd_path.exists());
+  println!("convert path: {path:?}");
+  match Command::new(cmd_path).arg("convert").arg(path).current_dir(wxs_file_path.parent().unwrap())
+    .spawn() {
+    Ok(mut child) => {
+      let status = child.wait()?;
+      if let Some(err) = child.stderr {
+        println!("error running convert : {:?}", err);
+      }
+      if let Some(out) = child.stdout {
+        println!("output running convert : {:?}", out);
+      }
+      // if !status.success() {
+      //   return Err(crate::Error::GenericError(format!("convert failed with status: {}", status)));
+      // }
+    },
+    Err(e) => {
+      println!("error running convert : {:?}", e);
+      return Err(crate::Error::GenericError(format!("convert failed with error: {}", e)));
+    }
+  }
   Ok(())
 }
 
@@ -348,11 +375,28 @@ fn run_candle(
     cmd.arg(ext);
   }
   clear_env_for_wix(&mut cmd);
-  cmd
+  match cmd
     .args(&args)
     .current_dir(cwd)
-    .output_ok()
-    .context("error running candle.exe")?;
+    .spawn() {
+    Ok(mut child) => {
+      let status = child.wait()?;
+      if let Some(err) = child.stderr {
+        println!("error running candle : {:?}", err);
+      }
+      if let Some(out) = child.stdout {
+        println!("output running candle : {:?}", out);
+      }
+      if !status.success() {
+        return Err(crate::Error::GenericError(format!("candle failed with status: {}", status)));
+      }
+    },
+    Err(e) => {
+      println!("error running candle : {:?}", e);
+      return Err(crate::Error::GenericError(format!("candle failed with error: {}", e)));
+    }
+  }
+    // .context("error running candle.exe")?;
 
   Ok(())
 }
@@ -374,15 +418,31 @@ fn run_wix(
     display_path(main_wxs_path),
   ];
 
-  args.extend(arguments);
+  // args.extend(arguments);
 
   let mut cmd = Command::new(wix_exe);
   clear_env_for_wix(&mut cmd);
-  cmd
+  match cmd
     .args(&args)
-    .current_dir(build_path)
-    .output_ok()
-    .context("error running light.exe")?;
+    .current_dir(build_path.parent().unwrap())
+    .spawn() {
+    Ok(mut child) => {
+      let status = child.wait()?;
+      if let Some(err) = child.stderr {
+        println!("error running wix : {:?}", err);
+      }
+      if let Some(out) = child.stdout {
+        println!("output running wix : {:?}", out);
+      }
+      if !status.success() {
+        return Err(crate::Error::GenericError(format!("wix failed with status: {}", status)));
+      }
+    },
+    Err(e) => {
+      println!("error running wix : {:?}", e);
+      return Err(crate::Error::GenericError(format!("wix failed with error: {}", e)));
+    }
+  }
 
   Ok(())
 }
@@ -395,6 +455,8 @@ fn run_light(
   extensions: &Vec<PathBuf>,
   output_path: &Path,
 ) -> crate::Result<()> {
+  println!("build_path: {:?}", build_path);
+  println!("output_path: {:?}", output_path);
   let light_exe = wix_toolset_path.join("light.exe");
 
   let mut args: Vec<String> = vec![
@@ -414,11 +476,27 @@ fn run_light(
     cmd.arg(ext);
   }
   clear_env_for_wix(&mut cmd);
-  cmd
+  match cmd
     .args(&args)
     .current_dir(build_path)
-    .output_ok()
-    .context("error running light.exe")?;
+    .spawn() {
+    Ok(mut child) => {
+      let status = child.wait()?;
+      if let Some(err) = child.stderr {
+        println!("error running light : {:?}", err);
+      }
+      if let Some(out) = child.stdout {
+        println!("output running light : {:?}", out);
+      }
+      if !status.success() {
+        return Err(crate::Error::GenericError(format!("light failed with status: {}", status)));
+      }
+    },
+    Err(e) => {
+      println!("error running light : {:?}", e);
+      return Err(crate::Error::GenericError(format!("light failed with error: {}", e)));
+    }
+  }
 
   Ok(())
 }
@@ -1169,7 +1247,7 @@ pub fn build_wix_app_installer(
     //convert wxs file
     run_convert(settings, wix_toolset_path, main_wxs_path.clone().as_path())?;
   } else {
-    let mut candle_inputs = vec![("main.wxs".into(), Vec::new())];
+    let mut candle_inputs = vec![(main_wxs_path.clone(), Vec::new())];
 
     let current_dir = std::env::current_dir()?;
     let extension_regex = Regex::new("\"http://schemas.microsoft.com/wix/(\\w+)\"")?;
@@ -1262,9 +1340,11 @@ pub fn build_wix_app_installer(
 
     
     if wix_version == 4 {
+      let current_dir = std::env::current_exe()?;
+
       run_wix(
         wix_toolset_path,
-        &output_path,
+        current_dir.as_path(),
         main_wxs_path.as_path(),
         arguments,
         &fragment_extensions,
