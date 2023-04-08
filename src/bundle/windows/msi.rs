@@ -46,12 +46,13 @@ pub fn bundle_project(settings: &Settings, updater: bool) -> crate::Result<Vec<P
     Some(4) => 4,
     _ => 3,
   };
+  println!("wix_version: {}", wix_version);
 
   let mut wix_path = dirs_next::cache_dir().unwrap();
   wix_path.push("bundler/WixTools/v".to_string() + &wix_version.to_string());
 
   if !wix_path.exists() {
-    wix::get_and_extract_wix(&wix_path)?;
+    wix::get_and_extract_wix(&wix_path, wix_version)?;
   } else {
     if wix_version == 4 && WIX_REQUIRED_FILES_V4
       .iter()
@@ -59,14 +60,14 @@ pub fn bundle_project(settings: &Settings, updater: bool) -> crate::Result<Vec<P
     {
       warn!("WixTools directory is missing some files. Recreating it.");
       std::fs::remove_dir_all(&wix_path)?;
-      wix::get_and_extract_wix(&wix_path)?;
+      wix::get_and_extract_wix(&wix_path, wix_version)?;
     } else if WIX_REQUIRED_FILES_V3
       .iter()
       .any(|p| !wix_path.join(p).exists())
     {
       warn!("WixTools directory is missing some files. Recreating it.");
       std::fs::remove_dir_all(&wix_path)?;
-      wix::get_and_extract_wix(&wix_path)?;
+      wix::get_and_extract_wix(&wix_path, wix_version)?;
     }
   }
 
