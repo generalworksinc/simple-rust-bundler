@@ -17,7 +17,7 @@ use std::{
   env,
   fs::{self, write},
   path::PathBuf,
-  process::{Command, Stdio},
+  process::{Command, Stdio}, io::stdout,
 };
 
 /// Bundles the project.
@@ -47,7 +47,8 @@ pub fn bundle_project(settings: &Settings, bundles: &[Bundle]) -> crate::Result<
   let dmg_name = format!("{}.dmg", &package_base_name);
   let dmg_path = output_path.join(&dmg_name);
 
-  let product_name = settings.main_binary_name();
+  // let product_name = settings.main_binary_name();
+  let product_name = settings.product_name();
   let bundle_file_name = format!("{}.app", product_name);
   let bundle_dir = settings.project_out_directory().join("bundle/macos");
 
@@ -138,12 +139,29 @@ pub fn bundle_project(settings: &Settings, bundles: &[Bundle]) -> crate::Result<
   info!(action = "Running"; "bundle_dmg.sh");
 
   // execute the bundle script
-  Command::new(&bundle_script_path)
+  match Command::new(&bundle_script_path)
     .current_dir(bundle_dir.clone())
     .args(args)
     .args(vec![dmg_name.as_str(), bundle_file_name.as_str()])
-    .output_ok()
-    .context("error running bundle_dmg.sh")?;
+    .spawn() {
+      Ok(mut child) => {
+        let status = child.wait()?;
+        if let Some(out) = child.stdout {
+          println!("stdout: {:?}", out);
+        }
+        if let Some(err) = child.stderr {
+          println!("stdout: {:?}", err);
+        }
+        if !status.success() {
+          return Err(anyhow::Error::msg("error running bundle_dmg status error.").into());
+        }
+      },
+      Err(e) => {
+        println!("error running bundle_dmg.: {:?}", e);
+        return Err(anyhow::Error::from(e).into());
+        // return Err(crate::Error::GenericError(format!("wix failed with error: {}", e)));
+      }
+    };
 
   fs::rename(bundle_dir.join(dmg_name), dmg_path.clone())?;
 
