@@ -293,14 +293,18 @@ pub fn convert_version(version_str: &str) -> anyhow::Result<String> {
 fn run_convert(
   settings: &Settings,
   wix_toolset_path: &Path,
-  wxs_file_path: &Path) -> crate::Result<()> {
-
+  wxs_file_path: &Path,
+) -> crate::Result<()> {
   let cmd_path = wix_toolset_path.join("wix.exe");
   let path = display_path(wxs_file_path);
   println!("cmd path: {:?}, exist: {:?}", cmd_path, cmd_path.exists());
   println!("convert path: {path:?}");
-  match Command::new(cmd_path).arg("convert").arg(path).current_dir(wxs_file_path.parent().unwrap())
-    .spawn() {
+  match Command::new(cmd_path)
+    .arg("convert")
+    .arg(path)
+    .current_dir(wxs_file_path.parent().unwrap())
+    .spawn()
+  {
     Ok(mut child) => {
       let status = child.wait()?;
       if let Some(err) = child.stderr {
@@ -312,10 +316,13 @@ fn run_convert(
       // if !status.success() {
       //   return Err(crate::Error::GenericError(format!("convert failed with status: {}", status)));
       // }
-    },
+    }
     Err(e) => {
       println!("error running convert : {:?}", e);
-      return Err(crate::Error::GenericError(format!("convert failed with error: {}", e)));
+      return Err(crate::Error::GenericError(format!(
+        "convert failed with error: {}",
+        e
+      )));
     }
   }
   Ok(())
@@ -375,10 +382,7 @@ fn run_candle(
     cmd.arg(ext);
   }
   clear_env_for_wix(&mut cmd);
-  match cmd
-    .args(&args)
-    .current_dir(cwd)
-    .spawn() {
+  match cmd.args(&args).current_dir(cwd).spawn() {
     Ok(mut child) => {
       let status = child.wait()?;
       if let Some(err) = child.stderr {
@@ -388,15 +392,21 @@ fn run_candle(
         println!("output running candle : {:?}", out);
       }
       if !status.success() {
-        return Err(crate::Error::GenericError(format!("candle failed with status: {}", status)));
+        return Err(crate::Error::GenericError(format!(
+          "candle failed with status: {}",
+          status
+        )));
       }
-    },
+    }
     Err(e) => {
       println!("error running candle : {:?}", e);
-      return Err(crate::Error::GenericError(format!("candle failed with error: {}", e)));
+      return Err(crate::Error::GenericError(format!(
+        "candle failed with error: {}",
+        e
+      )));
     }
   }
-    // .context("error running candle.exe")?;
+  // .context("error running candle.exe")?;
 
   Ok(())
 }
@@ -425,7 +435,8 @@ fn run_wix(
   match cmd
     .args(&args)
     .current_dir(build_path.parent().unwrap())
-    .spawn() {
+    .spawn()
+  {
     Ok(mut child) => {
       let status = child.wait()?;
       if let Some(err) = child.stderr {
@@ -435,12 +446,18 @@ fn run_wix(
         println!("output running wix : {:?}", out);
       }
       if !status.success() {
-        return Err(crate::Error::GenericError(format!("wix failed with status: {}", status)));
+        return Err(crate::Error::GenericError(format!(
+          "wix failed with status: {}",
+          status
+        )));
       }
-    },
+    }
     Err(e) => {
       println!("error running wix : {:?}", e);
-      return Err(crate::Error::GenericError(format!("wix failed with error: {}", e)));
+      return Err(crate::Error::GenericError(format!(
+        "wix failed with error: {}",
+        e
+      )));
     }
   }
 
@@ -476,10 +493,7 @@ fn run_light(
     cmd.arg(ext);
   }
   clear_env_for_wix(&mut cmd);
-  match cmd
-    .args(&args)
-    .current_dir(build_path)
-    .spawn() {
+  match cmd.args(&args).current_dir(build_path).spawn() {
     Ok(mut child) => {
       let status = child.wait()?;
       if let Some(err) = child.stderr {
@@ -489,12 +503,18 @@ fn run_light(
         println!("output running light : {:?}", out);
       }
       if !status.success() {
-        return Err(crate::Error::GenericError(format!("light failed with status: {}", status)));
+        return Err(crate::Error::GenericError(format!(
+          "light failed with status: {}",
+          status
+        )));
       }
-    },
+    }
     Err(e) => {
       println!("error running light : {:?}", e);
-      return Err(crate::Error::GenericError(format!("light failed with error: {}", e)));
+      return Err(crate::Error::GenericError(format!(
+        "light failed with error: {}",
+        e
+      )));
     }
   }
 
@@ -930,7 +950,6 @@ fn run_light(
 
 //     info!(action = "Running"; "light to produce {}", display_path(&msi_path));
 
-    
 //     if wix_ver == 3 {
 //       run_light(
 //         wix_toolset_path,
@@ -940,7 +959,7 @@ fn run_light(
 //         &msi_output_path,
 //       )?;
 //     }
-    
+
 //     rename(&msi_output_path, &msi_path)?;
 //     try_sign(&msi_path, settings)?;
 //     output_paths.push(msi_path);
@@ -996,7 +1015,6 @@ fn run_light(
 
 //   Ok(binaries)
 // }
-
 
 // Entry point for bundling and creating the MSI installer. For now the only supported platform is Windows x64.
 pub fn build_wix_app_installer(
@@ -1242,7 +1260,7 @@ pub fn build_wix_app_installer(
   write(main_wxs_path.clone(), handlebars.render("main.wxs", &data)?)?;
 
   let mut fragment_extensions = Vec::new();
-  
+
   if wix_version == 4 {
     //convert wxs file
     run_convert(settings, wix_toolset_path, main_wxs_path.clone().as_path())?;
@@ -1260,7 +1278,7 @@ pub fn build_wix_app_installer(
       }
       candle_inputs.push((fragment_path, extensions));
     }
-    
+
     for (path, extensions) in candle_inputs {
       fragment_extensions.extend(extensions.clone());
       run_candle(settings, wix_toolset_path, &output_path, path, extensions)?;
@@ -1338,7 +1356,6 @@ pub fn build_wix_app_installer(
 
     info!(action = "Running"; "light to produce {}", display_path(&msi_path));
 
-    
     if wix_version == 4 {
       let current_dir = std::env::current_exe()?;
 
@@ -1359,7 +1376,7 @@ pub fn build_wix_app_installer(
         &msi_output_path,
       )?;
     }
-    
+
     rename(&msi_output_path, &msi_path)?;
     try_sign(&msi_path, settings)?;
     output_paths.push(msi_path);

@@ -42,6 +42,7 @@ semver = "1"
 sha1 = "0.10"
 sha2 = "0.10"
 zip = "0.6"
+rpm = "0.9.0"
 
 # dependencies for code signing on Windows hosts
 [target."cfg(target_os = \"windows\")".dependencies]

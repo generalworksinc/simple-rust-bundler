@@ -81,44 +81,44 @@ pub fn bundle_project(settings: &Settings) -> crate::Result<Vec<PathBuf>> {
     .with_context(|| "Failed to build data folders and files")?;
   copy_custom_files(settings, &data_dir).with_context(|| "Failed to copy custom files")?;
 
-    // Generate control files.
-    let control_dir = package_dir.join("control");
-    generate_control_file(settings, arch, &control_dir, &data_dir)
-        .with_context(|| "Failed to create control file")?;
-    // Generate postinst files
-    // let postinst_dir = package_dir.join("postinst");
-    generate_postinst(settings, &control_dir).with_context(|| "Failed to create control file")?;
+  // Generate control files.
+  let control_dir = package_dir.join("control");
+  generate_control_file(settings, arch, &control_dir, &data_dir)
+    .with_context(|| "Failed to create control file")?;
+  // Generate postinst files
+  // let postinst_dir = package_dir.join("postinst");
+  generate_postinst(settings, &control_dir).with_context(|| "Failed to create control file")?;
 
-    // Generate prerm files
-    // let prerm_dir = package_dir.join("prerm");
-    generate_prerm(settings, &control_dir).with_context(|| "Failed to create control file")?;
+  // Generate prerm files
+  // let prerm_dir = package_dir.join("prerm");
+  generate_prerm(settings, &control_dir).with_context(|| "Failed to create control file")?;
 
-    generate_md5sums(&control_dir, &data_dir).with_context(|| "Failed to create md5sums file")?;
+  generate_md5sums(&control_dir, &data_dir).with_context(|| "Failed to create md5sums file")?;
 
-    // Generate `debian-binary` file; see
-    // http://www.tldp.org/HOWTO/Debian-Binary-Package-Building-HOWTO/x60.html#AEN66
-    let debian_binary_path = package_dir.join("debian-binary");
-    create_file_with_data(&debian_binary_path, "2.0\n")
-        .with_context(|| "Failed to create debian-binary file")?;
+  // Generate `debian-binary` file; see
+  // http://www.tldp.org/HOWTO/Debian-Binary-Package-Building-HOWTO/x60.html#AEN66
+  let debian_binary_path = package_dir.join("debian-binary");
+  create_file_with_data(&debian_binary_path, "2.0\n")
+    .with_context(|| "Failed to create debian-binary file")?;
 
-    // Apply tar/gzip/ar to create the final package file.
-    let control_tar_gz_path =
-        tar_and_gzip_dir(control_dir).with_context(|| "Failed to tar/gzip control directory")?;
-    let data_tar_gz_path =
-        tar_and_gzip_dir(data_dir).with_context(|| "Failed to tar/gzip data directory")?;
+  // Apply tar/gzip/ar to create the final package file.
+  let control_tar_gz_path =
+    tar_and_gzip_dir(control_dir).with_context(|| "Failed to tar/gzip control directory")?;
+  let data_tar_gz_path =
+    tar_and_gzip_dir(data_dir).with_context(|| "Failed to tar/gzip data directory")?;
 
-    // let mut postinst_files: Vec<PathBuf> = postinst_path.into_iter().collect();
-    // let mut prerm_files: Vec<PathBuf> = prerm_path.into_iter().collect();
-    // archive_files.ve
+  // let mut postinst_files: Vec<PathBuf> = postinst_path.into_iter().collect();
+  // let mut prerm_files: Vec<PathBuf> = prerm_path.into_iter().collect();
+  // archive_files.ve
 
-    // archive_files.append(&mut postinst_files);
-    // archive_files.append(&mut prerm_files);
-    create_archive(
-        vec![debian_binary_path, control_tar_gz_path, data_tar_gz_path],
-        &package_path,
-    )
-    .with_context(|| "Failed to create package archive")?;
-    Ok(vec![package_path])
+  // archive_files.append(&mut postinst_files);
+  // archive_files.append(&mut prerm_files);
+  create_archive(
+    vec![debian_binary_path, control_tar_gz_path, data_tar_gz_path],
+    &package_path,
+  )
+  .with_context(|| "Failed to create package archive")?;
+  Ok(vec![package_path])
 }
 
 /// Generate the debian data folders and files.
@@ -251,24 +251,24 @@ fn generate_md5sums(control_dir: &Path, data_dir: &Path) -> crate::Result<()> {
 }
 
 fn generate_postinst(settings: &Settings, control_dir: &Path) -> crate::Result<Option<PathBuf>> {
-    if let Some(postinst_path) = settings.deb().postinst_path.clone() {
-        let dest_path = control_dir.join("postinst");
-        common::copy_file(&postinst_path, dest_path.clone())
-            .with_context(|| format!("Failed to copy binary from {:?}", postinst_path))?;
-        Ok(Some(dest_path))
-    } else {
-        Ok(None)
-    }
+  if let Some(postinst_path) = settings.deb().postinst_path.clone() {
+    let dest_path = control_dir.join("postinst");
+    common::copy_file(&postinst_path, dest_path.clone())
+      .with_context(|| format!("Failed to copy binary from {:?}", postinst_path))?;
+    Ok(Some(dest_path))
+  } else {
+    Ok(None)
+  }
 }
 fn generate_prerm(settings: &Settings, control_dir: &Path) -> crate::Result<Option<PathBuf>> {
-    if let Some(prerm_path) = settings.deb().prerm_path.clone() {
-        let dest_path = control_dir.join("prerm");
-        common::copy_file(&prerm_path, dest_path.clone())
-            .with_context(|| format!("Failed to copy binary from {:?}", prerm_path))?;
-        Ok(Some(dest_path))
-    } else {
-        Ok(None)
-    }
+  if let Some(prerm_path) = settings.deb().prerm_path.clone() {
+    let dest_path = control_dir.join("prerm");
+    common::copy_file(&prerm_path, dest_path.clone())
+      .with_context(|| format!("Failed to copy binary from {:?}", prerm_path))?;
+    Ok(Some(dest_path))
+  } else {
+    Ok(None)
+  }
 }
 
 /// Copy the bundle's resource files into an appropriate directory under the

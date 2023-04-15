@@ -16,8 +16,9 @@ use log::info;
 use std::{
   env,
   fs::{self, write},
+  io::stdout,
   path::PathBuf,
-  process::{Command, Stdio}, io::stdout,
+  process::{Command, Stdio},
 };
 
 /// Bundles the project.
@@ -143,25 +144,26 @@ pub fn bundle_project(settings: &Settings, bundles: &[Bundle]) -> crate::Result<
     .current_dir(bundle_dir.clone())
     .args(args)
     .args(vec![dmg_name.as_str(), bundle_file_name.as_str()])
-    .spawn() {
-      Ok(mut child) => {
-        let status = child.wait()?;
-        if let Some(out) = child.stdout {
-          println!("stdout: {:?}", out);
-        }
-        if let Some(err) = child.stderr {
-          println!("stdout: {:?}", err);
-        }
-        if !status.success() {
-          return Err(anyhow::Error::msg("error running bundle_dmg status error.").into());
-        }
-      },
-      Err(e) => {
-        println!("error running bundle_dmg.: {:?}", e);
-        return Err(anyhow::Error::from(e).into());
-        // return Err(crate::Error::GenericError(format!("wix failed with error: {}", e)));
+    .spawn()
+  {
+    Ok(mut child) => {
+      let status = child.wait()?;
+      if let Some(out) = child.stdout {
+        println!("stdout: {:?}", out);
       }
-    };
+      if let Some(err) = child.stderr {
+        println!("stdout: {:?}", err);
+      }
+      if !status.success() {
+        return Err(anyhow::Error::msg("error running bundle_dmg status error.").into());
+      }
+    }
+    Err(e) => {
+      println!("error running bundle_dmg.: {:?}", e);
+      return Err(anyhow::Error::from(e).into());
+      // return Err(crate::Error::GenericError(format!("wix failed with error: {}", e)));
+    }
+  };
 
   fs::rename(bundle_dir.join(dmg_name), dmg_path.clone())?;
 

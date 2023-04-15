@@ -160,6 +160,19 @@ pub struct DebianSettings {
   pub prerm_path: Option<String>,
 }
 
+/// The Linux RPM bundle settings.
+#[derive(Clone, Debug, Default)]
+pub struct RpmSettings {
+  // // OS-specific settings:
+  // /// the list of debian dependencies.
+  // pub depends: Option<Vec<String>>,
+  /// List of custom files to add to the deb package.
+  /// Maps the path on the debian package to the path of the file to include (relative to the current working directory).
+  pub files: HashMap<PathBuf, PathBuf>,
+  pub postinst_path: Option<String>,
+  pub prerm_path: Option<String>,
+}
+
 /// The macOS bundle settings.
 #[derive(Clone, Debug, Default)]
 pub struct MacOsSettings {
@@ -376,6 +389,8 @@ pub struct BundleSettings {
   pub external_bin: Option<Vec<String>>,
   /// Debian-specific settings.
   pub deb: DebianSettings,
+  /// RPM-specific settings.
+  pub rpm: RpmSettings,
   /// MacOS-specific settings.
   pub macos: MacOsSettings,
   /// Updater configuration.
@@ -791,6 +806,10 @@ impl Settings {
     self.bundle_settings.long_description.as_deref()
   }
 
+  /// Returns the debian settings.
+  pub fn rpm(&self) -> &RpmSettings {
+    &self.bundle_settings.rpm
+  }
   /// Returns the debian settings.
   pub fn deb(&self) -> &DebianSettings {
     &self.bundle_settings.deb

@@ -23,21 +23,20 @@ const WIX_REQUIRED_FILES_V3: &[&str] = &[
   "WixUtilExtension.dll",
 ];
 const WIX_REQUIRED_FILES_V4: &[&str] = &[
-    "wix.exe",
-    "wix.dll.config",
-    "wix.dll",
-    "WixToolset.Core.Native.dll",
-    "WixToolset.Core.WindowsInstaller.dll",
-    "WixToolset.Data.dll",
-    "WixToolset.Dtf.Resources.dll",
-    "WixToolset.Extensibility.dll",
-    "WixToolset.Versioning.dll",
-    "WixToolset.Converters.dll",
-    "WixToolset.Core.Burn.dll",
-    "WixToolset.Core.dll",
-    "WixToolset.Core.ExtensionCache.dll",
+  "wix.exe",
+  "wix.dll.config",
+  "wix.dll",
+  "WixToolset.Core.Native.dll",
+  "WixToolset.Core.WindowsInstaller.dll",
+  "WixToolset.Data.dll",
+  "WixToolset.Dtf.Resources.dll",
+  "WixToolset.Extensibility.dll",
+  "WixToolset.Versioning.dll",
+  "WixToolset.Converters.dll",
+  "WixToolset.Core.Burn.dll",
+  "WixToolset.Core.dll",
+  "WixToolset.Core.ExtensionCache.dll",
 ];
-
 
 /// Runs all of the commands to build the MSI installer.
 /// Returns a vector of PathBuf that shows where the MSI was created.
@@ -54,9 +53,10 @@ pub fn bundle_project(settings: &Settings, updater: bool) -> crate::Result<Vec<P
   if !wix_path.exists() {
     wix::get_and_extract_wix(&wix_path, wix_version)?;
   } else {
-    if wix_version == 4 && WIX_REQUIRED_FILES_V4
-      .iter()
-      .any(|p| !wix_path.join(p).exists())
+    if wix_version == 4
+      && WIX_REQUIRED_FILES_V4
+        .iter()
+        .any(|p| !wix_path.join(p).exists())
     {
       warn!("WixTools directory is missing some files. Recreating it.");
       std::fs::remove_dir_all(&wix_path)?;
@@ -71,7 +71,7 @@ pub fn bundle_project(settings: &Settings, updater: bool) -> crate::Result<Vec<P
     }
   }
 
-  if wix_version == 4 { 
+  if wix_version == 4 {
     wix_path.push("tools");
     wix_path.push("net6.0");
     wix_path.push("any");
