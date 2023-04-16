@@ -22,6 +22,7 @@ pub fn bundle_project(settings: &Settings) -> crate::Result<Vec<PathBuf>> {
 }
 
 fn rpm_bundle(settings: &Settings) -> anyhow::Result<PathBuf, RPMError> {
+    println!("test 1....................");
   let arch = match settings.binary_arch() {
     "x86" => "i386",
     "x86_64" => "amd64",
@@ -37,19 +38,26 @@ fn rpm_bundle(settings: &Settings) -> anyhow::Result<PathBuf, RPMError> {
     arch
   );
   let package_name = format!("{}.rpm", package_base_name);
-
+  println!("test 2....................");
   let base_dir = settings.project_out_directory().join("bundle/rpm");
-  let package_dir = base_dir.join(&package_base_name);
-  if package_dir.exists() {
-    std::fs::remove_dir_all(&package_dir)
+  if base_dir.exists() {
+    std::fs::remove_dir_all(&base_dir)
       .map_err(|_| RPMError::Nom(format!("Failed to remove old {}", package_base_name)))?;
   }
+  std::fs::create_dir_all(base_dir.clone());
+
+  // let package_dir = base_dir.join(&package_base_name);
+  // if package_dir.exists() {
+  //   std::fs::remove_dir_all(&package_dir)
+  //     .map_err(|_| RPMError::Nom(format!("Failed to remove old {}", package_base_name)))?;
+  // }
   let package_path = base_dir.join(&package_name);
+  
 
-  info!(action = "Bundling"; "{} ({})", package_name, package_path.display());
+  // info!(action = "Bundling"; "{} ({})", package_name, package_path.display());
 
-  let (data_dir) = generate_data(settings, &package_dir)
-    .map_err(|_| RPMError::Nom("Failed to build data folders and files".to_string()))?;
+  // let (data_dir) = generate_data(settings, &package_dir)
+  //   .map_err(|_| RPMError::Nom("Failed to build data folders and files".to_string()))?;
 
   // let raw_secret_key = std::fs::read("/path/to/gpg.secret.key")?;
   let mut pkg_builder = rpm::RPMBuilder::new(
@@ -66,49 +74,106 @@ fn rpm_bundle(settings: &Settings) -> anyhow::Result<PathBuf, RPMError> {
   //     rpm::RPMFileOptions::new("/etc/awesome/config.toml").is_config(),
   // )?
   // file mode is inherited from source file
+  println!("test 3....................");
+
+  // for bin in settings.binaries() {
+  //   let bin_path = settings.binary_path(bin);
+  //   common::copy_file(&bin_path, bin_dir.join(bin.name()))
+  //     .with_context(|| format!("Failed to copy binary from {:?}", bin_path))?;
+  // }
+  //package binary files
   for binary in settings.binaries() {
     pkg_builder = pkg_builder.with_file(
-      binary.name(),
-      rpm::RPMFileOptions::new(binary.src_path().unwrap()), // format!("/usr/bin/{}", binary.name())
+        settings.binary_path(binary),
+    //   rpm::RPMFileOptions::new(binary.src_path().unwrap()), // format!("/usr/bin/{}", binary.name())
+      rpm::RPMFileOptions::new(format!("/usr/bin/{}", binary.name())),
     )?;
+  }
+  //package other files
+  for (rpm_path, path) in settings.rpm().files.iter() {
+    // let rpm_path = if rpm_path.is_absolute() {
+    //   rpm_path.strip_prefix("/").unwrap()
+    // } else {
+    //   rpm_path
+    // };
+    if path.is_file() {
+      println!("{:?} -> {:?}", path, rpm_path);
+      pkg_builder = pkg_builder.with_file(
+        path,
+      rpm::RPMFileOptions::new(rpm_path.to_string_lossy()),
+      )?;
+      // common::copy_file(path, data_dir.join(rpm_path)).map_err(|e| RPMError::Nom(e.to_string()))?;
+    } else {
+      // let out_dir = data_dir.join(rpm_path);
+      for entry in walkdir::WalkDir::new(path) {
+        let entry_path = entry.map_err(|e| RPMError::Nom(e.to_string()))?.into_path();
+        if entry_path.is_file() {
+          let without_prefix = entry_path.strip_prefix(path).unwrap();
+          println!("{:?} -> {:?}", entry_path.clone().to_string_lossy(), rpm_path.join(without_prefix).to_string_lossy());
+          pkg_builder = pkg_builder.with_file(
+            &entry_path,
+          rpm::RPMFileOptions::new(rpm_path.join(without_prefix).to_string_lossy()),
+          )?;
+
+          // common::copy_file(&entry_path, out_dir.join(without_prefix))
+          //   .map_err(|e| RPMError::Nom(e.to_string()))?;
+        }
+      }
+    }
   }
   // pkg_builder = pkg_builder.with_file(
   //     "./awesome-bin",
   //     rpm::RPMFileOptions::new("/usr/bin/awesome"),
   // )?;
-
+  println!("test 4 ...................");
   //files
-  for (rpm_path, path) in settings.rpm().files.iter() {
-    let rpm_path = if rpm_path.is_absolute() {
-      rpm_path.strip_prefix("/").unwrap()
-    } else {
-      rpm_path
-    };
-    if path.is_file() {
-      common::copy_file(path, data_dir.join(rpm_path)).map_err(|e| RPMError::Nom(e.to_string()))?;
-    } else {
-      let out_dir = data_dir.join(rpm_path);
-      for entry in walkdir::WalkDir::new(path) {
-        let entry_path = entry.map_err(|e| RPMError::Nom(e.to_string()))?.into_path();
-        if entry_path.is_file() {
-          let without_prefix = entry_path.strip_prefix(path).unwrap();
-          common::copy_file(&entry_path, out_dir.join(without_prefix))
-            .map_err(|e| RPMError::Nom(e.to_string()))?;
-        }
-      }
-    }
-  }
+  // for (rpm_path, path) in settings.rpm().files.iter() {
+  //   let rpm_path = if rpm_path.is_absolute() {
+  //     rpm_path.strip_prefix("/").unwrap()
+  //   } else {
+  //     rpm_path
+  //   };
+  //   if path.is_file() {
+  //     common::copy_file(path, data_dir.join(rpm_path)).map_err(|e| RPMError::Nom(e.to_string()))?;
+  //   } else {
+  //     let out_dir = data_dir.join(rpm_path);
+  //     for entry in walkdir::WalkDir::new(path) {
+  //       let entry_path = entry.map_err(|e| RPMError::Nom(e.to_string()))?.into_path();
+  //       if entry_path.is_file() {
+  //         let without_prefix = entry_path.strip_prefix(path).unwrap();
+  //         common::copy_file(&entry_path, out_dir.join(without_prefix))
+  //           .map_err(|e| RPMError::Nom(e.to_string()))?;
+  //       }
+  //     }
+  //   }
+  // }
   // settings::rpm::pre_install_script(settings
-
+    println!("test 5...................");
   if let Some(prerm_path) = settings.rpm().prerm_path.as_ref() {
     pkg_builder = pkg_builder.pre_uninstall_script(prerm_path);
   }
+  // set scripts(post inst)
   if let Some(postinst_path) = settings.rpm().postinst_path.as_ref() {
-    pkg_builder = pkg_builder.post_install_script(postinst_path);
+    let postinst_pathbuf = PathBuf::from(postinst_path);
+    if let Ok(body) = std::fs::read_to_string(postinst_pathbuf.clone()) {
+      pkg_builder = pkg_builder.post_install_script(body);
+    } else {
+      return Err(RPMError::Nom(format!("can't read {:?} postinst_path.", postinst_pathbuf)));
+    }
+  }
+  // set scripts(pre rm)
+  if let Some(prerm_path) = settings.rpm().prerm_path.as_ref() {
+    let prerm_pathbuf = PathBuf::from(prerm_path);
+    if let Ok(body) = std::fs::read_to_string(prerm_pathbuf.clone()) {
+      pkg_builder = pkg_builder.pre_uninstall_script(body);
+    } else {
+      return Err(RPMError::Nom(format!("can't read {:?} postinst_path.", prerm_pathbuf)));
+    }
   }
   if let Some(copyright) = settings.copyright_string() {
     pkg_builder = pkg_builder.vendor(copyright);
   }
+  println!("test 6...................");
   let pkg = pkg_builder
     // .with_file(
     //     "./awesome-config.toml",
@@ -125,7 +190,15 @@ fn rpm_bundle(settings: &Settings) -> anyhow::Result<PathBuf, RPMError> {
     // .url("www.github.com/repo")
     // .vcs("git:repo=example_repo:branch=example_branch:sha=example_sha")
     // .build_and_sign(Signer::load_from_asc_bytes(&raw_secret_key)?);
-    .build();
+    .build()?;
+  
+  let mut f = std::fs::File::create(package_path.clone())?;
+  pkg.write(&mut f)?;
+
+  // reading
+  // let raw_pub_key = std::fs::read("/path/to/gpg.key.pub")?;
+  // let pkg = rpm::RPMPackage::open("test_assets/389-ds-base-devel-1.3.8.4-15.el7.x86_64.rpm")?;
+
   Ok(package_path)
 }
 

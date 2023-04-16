@@ -67,6 +67,7 @@ pub fn bundle_project(settings: Settings) -> crate::Result<Vec<Bundle>> {
 
       #[cfg(target_os = "windows")]
       PackageType::WindowsMsi => windows::msi::bundle_project(&settings, false)?,
+      #[cfg(target_os = "windows")]
       PackageType::Nsis => windows::nsis::bundle_project(&settings, false)?,
 
       #[cfg(target_os = "linux")]
