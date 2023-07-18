@@ -18,7 +18,7 @@ rust-version = "1.60"
 exclude = [ "CHANGELOG.md", "/target", "rustfmt.toml" ]
 
 [dependencies]
-tauri-utils = { version = "1.2.1", git = "https://github.com/tauri-apps/tauri.git",  features = [ "resources" ] }
+tauri-utils = { version = "1.2.1", features = [ "resources" ] }
 image = "0.24.5"
 libflate = "1.2"
 anyhow = "1.0"

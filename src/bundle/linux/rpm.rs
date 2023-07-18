@@ -22,7 +22,7 @@ pub fn bundle_project(settings: &Settings) -> crate::Result<Vec<PathBuf>> {
 }
 
 fn rpm_bundle(settings: &Settings) -> anyhow::Result<PathBuf, RPMError> {
-    println!("test 1....................");
+  println!("test 1....................");
   let arch = match settings.binary_arch() {
     "x86" => "i386",
     "x86_64" => "amd64",
@@ -52,7 +52,6 @@ fn rpm_bundle(settings: &Settings) -> anyhow::Result<PathBuf, RPMError> {
   //     .map_err(|_| RPMError::Nom(format!("Failed to remove old {}", package_base_name)))?;
   // }
   let package_path = base_dir.join(&package_name);
-  
 
   // info!(action = "Bundling"; "{} ({})", package_name, package_path.display());
 
@@ -84,8 +83,8 @@ fn rpm_bundle(settings: &Settings) -> anyhow::Result<PathBuf, RPMError> {
   //package binary files
   for binary in settings.binaries() {
     pkg_builder = pkg_builder.with_file(
-        settings.binary_path(binary),
-    //   rpm::RPMFileOptions::new(binary.src_path().unwrap()), // format!("/usr/bin/{}", binary.name())
+      settings.binary_path(binary),
+      //   rpm::RPMFileOptions::new(binary.src_path().unwrap()), // format!("/usr/bin/{}", binary.name())
       rpm::RPMFileOptions::new(format!("/usr/bin/{}", binary.name())),
     )?;
   }
@@ -98,10 +97,8 @@ fn rpm_bundle(settings: &Settings) -> anyhow::Result<PathBuf, RPMError> {
     // };
     if path.is_file() {
       println!("{:?} -> {:?}", path, rpm_path);
-      pkg_builder = pkg_builder.with_file(
-        path,
-      rpm::RPMFileOptions::new(rpm_path.to_string_lossy()),
-      )?;
+      pkg_builder =
+        pkg_builder.with_file(path, rpm::RPMFileOptions::new(rpm_path.to_string_lossy()))?;
       // common::copy_file(path, data_dir.join(rpm_path)).map_err(|e| RPMError::Nom(e.to_string()))?;
     } else {
       // let out_dir = data_dir.join(rpm_path);
@@ -109,10 +106,14 @@ fn rpm_bundle(settings: &Settings) -> anyhow::Result<PathBuf, RPMError> {
         let entry_path = entry.map_err(|e| RPMError::Nom(e.to_string()))?.into_path();
         if entry_path.is_file() {
           let without_prefix = entry_path.strip_prefix(path).unwrap();
-          println!("{:?} -> {:?}", entry_path.clone().to_string_lossy(), rpm_path.join(without_prefix).to_string_lossy());
+          println!(
+            "{:?} -> {:?}",
+            entry_path.clone().to_string_lossy(),
+            rpm_path.join(without_prefix).to_string_lossy()
+          );
           pkg_builder = pkg_builder.with_file(
             &entry_path,
-          rpm::RPMFileOptions::new(rpm_path.join(without_prefix).to_string_lossy()),
+            rpm::RPMFileOptions::new(rpm_path.join(without_prefix).to_string_lossy()),
           )?;
 
           // common::copy_file(&entry_path, out_dir.join(without_prefix))
@@ -148,7 +149,7 @@ fn rpm_bundle(settings: &Settings) -> anyhow::Result<PathBuf, RPMError> {
   //   }
   // }
   // settings::rpm::pre_install_script(settings
-    println!("test 5...................");
+  println!("test 5...................");
   if let Some(prerm_path) = settings.rpm().prerm_path.as_ref() {
     pkg_builder = pkg_builder.pre_uninstall_script(prerm_path);
   }
@@ -158,7 +159,10 @@ fn rpm_bundle(settings: &Settings) -> anyhow::Result<PathBuf, RPMError> {
     if let Ok(body) = std::fs::read_to_string(postinst_pathbuf.clone()) {
       pkg_builder = pkg_builder.post_install_script(body);
     } else {
-      return Err(RPMError::Nom(format!("can't read {:?} postinst_path.", postinst_pathbuf)));
+      return Err(RPMError::Nom(format!(
+        "can't read {:?} postinst_path.",
+        postinst_pathbuf
+      )));
     }
   }
   // set scripts(pre rm)
@@ -167,7 +171,10 @@ fn rpm_bundle(settings: &Settings) -> anyhow::Result<PathBuf, RPMError> {
     if let Ok(body) = std::fs::read_to_string(prerm_pathbuf.clone()) {
       pkg_builder = pkg_builder.pre_uninstall_script(body);
     } else {
-      return Err(RPMError::Nom(format!("can't read {:?} postinst_path.", prerm_pathbuf)));
+      return Err(RPMError::Nom(format!(
+        "can't read {:?} postinst_path.",
+        prerm_pathbuf
+      )));
     }
   }
   if let Some(copyright) = settings.copyright_string() {
@@ -191,7 +198,7 @@ fn rpm_bundle(settings: &Settings) -> anyhow::Result<PathBuf, RPMError> {
     // .vcs("git:repo=example_repo:branch=example_branch:sha=example_sha")
     // .build_and_sign(Signer::load_from_asc_bytes(&raw_secret_key)?);
     .build()?;
-  
+
   let mut f = std::fs::File::create(package_path.clone())?;
   pkg.write(&mut f)?;
 
