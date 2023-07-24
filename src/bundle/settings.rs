@@ -624,9 +624,14 @@ impl Settings {
 
   /// Returns the path to the specified binary.
   pub fn binary_path(&self, binary: &BundleBinary) -> PathBuf {
-    let mut path = self.project_out_directory.clone();
-    path.push(binary.name());
-    path
+    match binary.src_path {
+      Some(ref path) => PathBuf::from(path),
+      None => {
+        let mut path = self.project_out_directory.clone();
+        path.push(binary.name());
+        path
+      },
+    }
   }
 
   /// Returns the list of binaries to bundle.
