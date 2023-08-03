@@ -26,16 +26,18 @@
 use super::super::common;
 use crate::Settings;
 use anyhow::Context;
+use handlebars::Handlebars;
 use heck::AsKebabCase;
 use image::{self, codecs::png::PngDecoder, ImageDecoder};
 use libflate::gzip;
 use log::info;
+use serde::Serialize;
 use walkdir::WalkDir;
 
 use std::{
   collections::BTreeSet,
   ffi::OsStr,
-  fs::{self, File},
+  fs::{self, read_to_string, File},
   io::{self, Write},
   path::{Path, PathBuf},
 };
@@ -106,13 +108,6 @@ pub fn bundle_project(settings: &Settings) -> crate::Result<Vec<PathBuf>> {
     tar_and_gzip_dir(control_dir).with_context(|| "Failed to tar/gzip control directory")?;
   let data_tar_gz_path =
     tar_and_gzip_dir(data_dir).with_context(|| "Failed to tar/gzip data directory")?;
-
-  // let mut postinst_files: Vec<PathBuf> = postinst_path.into_iter().collect();
-  // let mut prerm_files: Vec<PathBuf> = prerm_path.into_iter().collect();
-  // archive_files.ve
-
-  // archive_files.append(&mut postinst_files);
-  // archive_files.append(&mut prerm_files);
   create_archive(
     vec![debian_binary_path, control_tar_gz_path, data_tar_gz_path],
     &package_path,
@@ -156,23 +151,51 @@ fn generate_desktop_file(settings: &Settings, data_dir: &Path) -> crate::Result<
   let desktop_file_path = data_dir
     .join("usr/share/applications")
     .join(desktop_file_name);
-  let file = &mut common::create_file(&desktop_file_path)?;
+
   // For more information about the format of this file, see
   // https://developer.gnome.org/integration-guide/stable/desktop-files.html.en
-  writeln!(file, "[Desktop Entry]")?;
-  if let Some(category) = settings.app_category() {
-    writeln!(file, "Categories={}", category.gnome_desktop_categories())?;
+  let file = &mut common::create_file(&desktop_file_path)?;
+
+  let mut handlebars = Handlebars::new();
+  handlebars.register_escape_fn(handlebars::no_escape);
+  if let Some(template) = &settings.deb().desktop_template {
+    handlebars
+      .register_template_string("main.desktop", read_to_string(template)?)
+      .with_context(|| "Failed to setup custom handlebar template")?;
   } else {
-    writeln!(file, "Categories=")?;
+    handlebars
+      .register_template_string("main.desktop", include_str!("./templates/main.desktop"))
+      .with_context(|| "Failed to setup custom handlebar template")?;
   }
-  if !settings.short_description().is_empty() {
-    writeln!(file, "Comment={}", settings.short_description())?;
+
+  #[derive(Serialize)]
+  struct DesktopTemplateParams<'a> {
+    categories: &'a str,
+    comment: Option<&'a str>,
+    exec: &'a str,
+    icon: &'a str,
+    name: &'a str,
   }
-  writeln!(file, "Exec={}", bin_name)?;
-  writeln!(file, "Icon={}", bin_name)?;
-  writeln!(file, "Name={}", settings.product_name())?;
-  writeln!(file, "Terminal=false")?;
-  writeln!(file, "Type=Application")?;
+
+  handlebars.render_to_write(
+    "main.desktop",
+    &DesktopTemplateParams {
+      categories: settings
+        .app_category()
+        .map(|app_category| app_category.gnome_desktop_categories())
+        .unwrap_or(""),
+      comment: if !settings.short_description().is_empty() {
+        Some(settings.short_description())
+      } else {
+        None
+      },
+      exec: bin_name,
+      icon: bin_name,
+      name: settings.product_name(),
+    },
+    file,
+  )?;
+
   Ok(())
 }
 

@@ -1,70 +1,156 @@
 #workspace = { }
 
 [package]
+edition = "2021"
+rust-version = "1.71"
 name = "simple-rust-bundler"
-version = "0.0.1"
+version = "0.0.2"
 authors = [
   "Masato Yuna <masato.yuna@gmail.com>",
   "George Burton <burtonageo@gmail.com>",
   "Tauri Programme within The Commons Conservancy"
 ]
-categories = [ "command-line-utilities", "development-tools::cargo-plugins" ]
-license = "Apache-2.0 OR MIT"
-keywords = []
-repository = "https://github.com/generalworksinc/simple-rust-bundler.git"
+exclude = [
+    "CHANGELOG.md",
+    "/target",
+    "rustfmt.toml",
+]
 description = "rust bundle tool from tauri bundler fork"
-edition = "2021"
-rust-version = "1.60"
-exclude = [ "CHANGELOG.md", "/target", "rustfmt.toml" ]
+readme = "README.md"
+keywords = []
+categories = [
+    "command-line-utilities",
+    "development-tools::cargo-plugins",
+]
+license = "Apache-2.0 OR MIT"
+repository = "https://github.com/generalworksinc/simple-rust-bundler.git"
 
-[dependencies]
-tauri-utils = { version = "1.2.1", features = [ "resources" ] }
-image = "0.24.5"
-libflate = "1.2"
-anyhow = "1.0"
-thiserror = "1.0"
-serde_json = "1.0"
-serde = { version = "1.0", features = [ "derive" ] }
-strsim = "0.10.0"
-tar = "0.4.38"
-walkdir = "2"
-handlebars = "4.3"
-tempfile = "3.3.0"
-log = { version = "0.4.17", features = [ "kv_unstable" ] }
-dirs-next = "2.0"
-encoding_rs = "0.8"
-os_pipe = "1"
-
-# dependencies for Windows targets
-attohttpc = "0.24"
-hex = "0.4"
-semver = "1"
-sha1 = "0.10"
-sha2 = "0.10"
-zip = "0.6"
-rpm = "0.9.0"
-
-# dependencies for code signing on Windows hosts
-[target."cfg(target_os = \"windows\")".dependencies]
-uuid = { version = "1", features = [ "v4", "v5" ] }
-bitness = "0.4"
-winreg = "0.10" # Can only be compiled for Windows hosts
-glob = "0.3"
-
-
-[target."cfg(target_os = \"macos\")".dependencies]
-icns = { package = "tauri-icns", version = "0.1" }
-time = { version = "0.3", features = [ "formatting" ] }
-plist = "1"
-
-[target."cfg(any(target_os = \"macos\", target_os = \"windows\"))".dependencies]
-regex = "1"
-
-[target."cfg(target_os = \"linux\")".dependencies]
-heck = "0.4"
-ar = "0.9.0"
-md5 = "0.7.0"
 
 [lib]
 name = "simple_bundler"
 path = "src/lib.rs"
+
+[dependencies]
+rpm = "0.9.0"
+
+[dependencies.anyhow]
+version = "1.0"
+
+[dependencies.dirs-next]
+version = "2.0"
+
+[dependencies.dunce]
+version = "1"
+
+[dependencies.handlebars]
+version = "4.3"
+
+[dependencies.hex]
+version = "0.4"
+
+[dependencies.image]
+version = "0.24.6"
+
+[dependencies.libflate]
+version = "1.4"
+
+[dependencies.log]
+version = "0.4.19"
+features = ["kv_unstable"]
+
+[dependencies.native-tls]
+version = "0.2"
+optional = true
+
+[dependencies.os_pipe]
+version = "1"
+
+[dependencies.semver]
+version = "1"
+
+[dependencies.serde]
+version = "1.0"
+features = ["derive"]
+
+[dependencies.serde_json]
+version = "1.0"
+
+[dependencies.sha1]
+version = "0.10"
+
+[dependencies.sha2]
+version = "0.10"
+
+[dependencies.strsim]
+version = "0.10.0"
+
+[dependencies.tar]
+version = "0.4.38"
+
+[dependencies.tauri-utils]
+version = "1.4.0"
+features = ["resources"]
+
+[dependencies.tempfile]
+version = "3.6.0"
+
+[dependencies.thiserror]
+version = "1.0"
+
+[dependencies.ureq]
+version = "2.6"
+default-features = false
+
+[dependencies.walkdir]
+version = "2"
+
+[dependencies.zip]
+version = "0.6"
+
+[features]
+default = ["rustls"]
+native-tls = ["ureq/native-tls"]
+native-tls-vendored = [
+    "native-tls",
+    "native-tls/vendored",
+]
+rustls = ["ureq/tls"]
+
+[target."cfg(any(target_os = \"macos\", target_os = \"windows\"))".dependencies.regex]
+version = "1"
+
+[target."cfg(target_os = \"linux\")".dependencies.ar]
+version = "0.9.0"
+
+[target."cfg(target_os = \"linux\")".dependencies.heck]
+version = "0.4"
+
+[target."cfg(target_os = \"linux\")".dependencies.md5]
+version = "0.7.0"
+
+[target."cfg(target_os = \"macos\")".dependencies.icns]
+version = "0.1"
+package = "tauri-icns"
+
+[target."cfg(target_os = \"macos\")".dependencies.plist]
+version = "1"
+
+[target."cfg(target_os = \"macos\")".dependencies.time]
+version = "0.3"
+features = ["formatting"]
+
+[target."cfg(target_os = \"windows\")".dependencies.bitness]
+version = "0.4"
+
+[target."cfg(target_os = \"windows\")".dependencies.glob]
+version = "0.3"
+
+[target."cfg(target_os = \"windows\")".dependencies.uuid]
+version = "1"
+features = [
+    "v4",
+    "v5",
+]
+
+[target."cfg(target_os = \"windows\")".dependencies.winreg]
+version = "0.50"

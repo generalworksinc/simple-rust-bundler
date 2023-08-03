@@ -19,7 +19,7 @@ use log::info;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::{
-  collections::{BTreeMap, HashMap},
+  collections::{BTreeMap, HashMap, HashSet},
   fs::{create_dir_all, read_to_string, remove_dir_all, rename, write, File},
   io::Write,
   path::{Path, PathBuf},
@@ -416,7 +416,7 @@ fn run_wix(
   build_path: &Path,
   main_wxs_path: &Path,
   arguments: Vec<String>,
-  extensions: &Vec<PathBuf>,
+  extensions: &HashSet<PathBuf>,
   output_path: &Path,
 ) -> crate::Result<()> {
   let wix_exe = wix_toolset_path.join("wix.exe");
@@ -472,18 +472,9 @@ fn run_light(
   extensions: &Vec<PathBuf>,
   output_path: &Path,
 ) -> crate::Result<()> {
-  println!("build_path: {:?}", build_path);
-  println!("output_path: {:?}", output_path);
   let light_exe = wix_toolset_path.join("light.exe");
 
-  let mut args: Vec<String> = vec![
-    "-ext".to_string(),
-    "WixUIExtension".to_string(),
-    "-ext".to_string(),
-    "WixUtilExtension".to_string(),
-    "-o".to_string(),
-    display_path(output_path),
-  ];
+  let mut args: Vec<String> = vec!["-o".to_string(), display_path(output_path)];
 
   args.extend(arguments);
 
@@ -523,497 +514,6 @@ fn run_light(
 
 // fn get_icon_data() -> crate::Result<()> {
 //   Ok(())
-// }
-
-// // Entry point for bundling and creating the MSI installer. For now the only supported platform is Windows x64.
-// pub fn build_wix_app_installer(
-//   settings: &Settings,
-//   wix_toolset_path: &Path,
-//   updater: bool,
-// ) -> crate::Result<Vec<PathBuf>> {
-//   let arch = match settings.binary_arch() {
-//     "x86_64" => "x64",
-//     "x86" => "x86",
-//     target => {
-//       return Err(crate::Error::ArchError(format!(
-//         "unsupported target: {}",
-//         target
-//       )))
-//     }
-//   };
-
-//   let app_version = convert_version(settings.version_string())?;
-
-//   // target only supports x64.
-//   info!("Target: {}", arch);
-
-//   let main_binary = settings
-//     .binaries()
-//     .iter()
-//     .find(|bin| bin.main())
-//     .ok_or_else(|| anyhow::anyhow!("Failed to get main binary"))?;
-//   let app_exe_source = settings.binary_path(main_binary);
-
-//   try_sign(&app_exe_source, settings)?;
-
-//   let output_path = settings.project_out_directory().join("wix").join(arch);
-
-//   if output_path.exists() {
-//     remove_dir_all(&output_path)?;
-//   }
-//   create_dir_all(&output_path)?;
-
-//   let mut data = BTreeMap::new();
-
-//   // let silent_webview_install = if let WebviewInstallMode::DownloadBootstrapper { silent }
-//   // | WebviewInstallMode::EmbedBootstrapper { silent }
-//   // | WebviewInstallMode::OfflineInstaller { silent } =
-//   //   settings.windows().webview_install_mode
-//   // {
-//   //   silent
-//   // } else {
-//   //   true
-//   // };
-
-//   // let webview_install_mode = if updater {
-//   //   WebviewInstallMode::DownloadBootstrapper {
-//   //     silent: silent_webview_install,
-//   //   }
-//   // } else {
-//   //   let mut webview_install_mode = settings.windows().webview_install_mode.clone();
-//   //   if let Some(fixed_runtime_path) = settings.windows().webview_fixed_runtime_path.clone() {
-//   //     webview_install_mode = WebviewInstallMode::FixedRuntime {
-//   //       path: fixed_runtime_path,
-//   //     };
-//   //   } else if let Some(wix) = &settings.windows().wix {
-//   //     if wix.skip_webview_install {
-//   //       webview_install_mode = WebviewInstallMode::Skip;
-//   //     }
-//   //   }
-//   //   webview_install_mode
-//   // };
-
-//   // data.insert("install_webview", to_json(true));
-//   // data.insert(
-//   //   "webview_installer_args",
-//   //   to_json(if silent_webview_install {
-//   //     "/silent"
-//   //   } else {
-//   //     ""
-//   //   }),
-//   // );
-
-//   // match webview_install_mode {
-//   //   WebviewInstallMode::Skip | WebviewInstallMode::FixedRuntime { .. } => {
-//   //     data.insert("install_webview", to_json(false));
-//   //   }
-//   //   WebviewInstallMode::DownloadBootstrapper { silent: _ } => {
-//   //     data.insert("download_bootstrapper", to_json(true));
-//   //     data.insert(
-//   //       "webview_installer_args",
-//   //       to_json(if silent_webview_install {
-//   //         "&apos;/silent&apos;,"
-//   //       } else {
-//   //         ""
-//   //       }),
-//   //     );
-//   //   }
-//   //   WebviewInstallMode::EmbedBootstrapper { silent: _ } => {
-//   //     let webview2_bootstrapper_path = output_path.join("MicrosoftEdgeWebview2Setup.exe");
-//   //     std::fs::write(
-//   //       &webview2_bootstrapper_path,
-//   //       download(WEBVIEW2_BOOTSTRAPPER_URL)?,
-//   //     )?;
-//   //     data.insert(
-//   //       "webview2_bootstrapper_path",
-//   //       to_json(webview2_bootstrapper_path),
-//   //     );
-//   //   }
-//   //   WebviewInstallMode::OfflineInstaller { silent: _ } => {
-//   //     let guid = if arch == "x64" {
-//   //       WEBVIEW2_X64_INSTALLER_GUID
-//   //     } else {
-//   //       WEBVIEW2_X86_INSTALLER_GUID
-//   //     };
-//   //     let offline_installer_path = dirs_next::cache_dir()
-//   //       .unwrap()
-//   //       .join("tauri")
-//   //       .join("Webview2OfflineInstaller")
-//   //       .join(guid)
-//   //       .join(arch);
-//   //     create_dir_all(&offline_installer_path)?;
-//   //     let webview2_installer_path =
-//   //       offline_installer_path.join("MicrosoftEdgeWebView2RuntimeInstaller.exe");
-//   //     if !webview2_installer_path.exists() {
-//   //       std::fs::write(
-//   //         &webview2_installer_path,
-//   //         download(
-//   //           &format!("https://msedge.sf.dl.delivery.mp.microsoft.com/filestreamingservice/files/{}/MicrosoftEdgeWebView2RuntimeInstaller{}.exe",
-//   //             guid,
-//   //             arch.to_uppercase(),
-//   //           ),
-//   //         )?,
-//   //       )?;
-//   //     }
-//   //     data.insert("webview2_installer_path", to_json(webview2_installer_path));
-//   //   }
-//   // }
-
-//   let language_map: HashMap<String, LanguageMetadata> =
-//     serde_json::from_str(include_str!("./languages.json")).unwrap();
-
-//   if let Some(wix) = &settings.windows().wix {
-//     if let Some(license) = &wix.license {
-//       if license.ends_with(".rtf") {
-//         data.insert("license", to_json(license));
-//       } else {
-//         let license_contents = read_to_string(license)?;
-//         let license_rtf = format!(
-//           r#"{{\rtf1\ansi\ansicpg1252\deff0\nouicompat\deflang1033{{\fonttbl{{\f0\fnil\fcharset0 Calibri;}}}}
-// {{\*\generator Riched20 10.0.18362}}\viewkind4\uc1
-// \pard\sa200\sl276\slmult1\f0\fs22\lang9 {}\par
-// }}
-//  "#,
-//           license_contents.replace('\n', "\\par ")
-//         );
-//         let rtf_output_path = settings
-//           .project_out_directory()
-//           .join("wix")
-//           .join("LICENSE.rtf");
-//         std::fs::write(&rtf_output_path, license_rtf)?;
-//         data.insert("license", to_json(rtf_output_path));
-//       }
-//     }
-//   }
-
-//   let configured_languages = settings
-//     .windows()
-//     .wix
-//     .as_ref()
-//     .map(|w| w.language.clone())
-//     .unwrap_or_default();
-
-//   data.insert("product_name", to_json(settings.product_name()));
-//   data.insert("version", to_json(&app_version));
-//   let bundle_id = settings.bundle_identifier();
-//   let manufacturer = settings
-//     .publisher()
-//     .unwrap_or_else(|| bundle_id.split('.').nth(1).unwrap_or(bundle_id));
-//   data.insert("bundle_id", to_json(bundle_id));
-//   data.insert("manufacturer", to_json(manufacturer));
-//   let upgrade_code = Uuid::new_v5(
-//     &Uuid::NAMESPACE_DNS,
-//     format!("{}.app.x64", &settings.main_binary_name()).as_bytes(),
-//   )
-//   .to_string();
-
-//   data.insert("upgrade_code", to_json(upgrade_code.as_str()));
-//   data.insert(
-//     "allow_downgrades",
-//     to_json(settings.windows().allow_downgrades),
-//   );
-
-//   let path_guid = generate_package_guid(settings).to_string();
-//   data.insert("path_component_guid", to_json(path_guid.as_str()));
-
-//   let shortcut_guid = generate_package_guid(settings).to_string();
-//   data.insert("shortcut_guid", to_json(shortcut_guid.as_str()));
-
-//   let app_exe_name = settings.main_binary_name().to_string();
-//   data.insert("app_exe_name", to_json(app_exe_name));
-
-//   let binaries = generate_binaries_data(settings)?;
-
-//   let binaries_json = to_json(binaries);
-//   data.insert("binaries", binaries_json);
-
-//   let resources = generate_resource_data(settings)?;
-//   let mut resources_wix_string = String::from("");
-//   let mut files_ids = Vec::new();
-//   for (_, dir) in resources {
-//     let (wix_string, ids) = dir.get_wix_data()?;
-//     resources_wix_string.push_str(wix_string.as_str());
-//     for id in ids {
-//       files_ids.push(id);
-//     }
-//   }
-
-//   data.insert("resources", to_json(resources_wix_string));
-//   data.insert("resource_file_ids", to_json(files_ids));
-
-//   let merge_modules = get_merge_modules(settings)?;
-//   data.insert("merge_modules", to_json(merge_modules));
-
-//   data.insert("app_exe_source", to_json(&app_exe_source));
-
-//   // copy icon from `settings.windows().icon_path` folder to resource folder near msi
-//   let icon_path = copy_icon(settings, "icon.ico", &settings.windows().icon_path)?;
-
-//   data.insert("icon_path", to_json(icon_path));
-
-//   let mut fragment_paths = Vec::new();
-//   let mut handlebars = Handlebars::new();
-//   let mut has_custom_template = false;
-//   let mut enable_elevated_update_task = false;
-
-//   if let Some(wix) = &settings.windows().wix {
-//     data.insert("component_group_refs", to_json(&wix.component_group_refs));
-//     data.insert("component_refs", to_json(&wix.component_refs));
-//     data.insert("feature_group_refs", to_json(&wix.feature_group_refs));
-//     data.insert("feature_refs", to_json(&wix.feature_refs));
-//     data.insert("merge_refs", to_json(&wix.merge_refs));
-//     fragment_paths = wix.fragment_paths.clone();
-//     enable_elevated_update_task = wix.enable_elevated_update_task;
-
-//     if let Some(temp_path) = &wix.template {
-//       let template = read_to_string(temp_path)?;
-//       handlebars
-//         .register_template_string("main.wxs", &template)
-//         .map_err(|e| e.to_string())
-//         .expect("Failed to setup custom handlebar template");
-//       has_custom_template = true;
-//     }
-
-//     if let Some(banner_path) = &wix.banner_path {
-//       let filename = banner_path
-//         .file_name()
-//         .unwrap()
-//         .to_string_lossy()
-//         .into_owned();
-//       data.insert(
-//         "banner_path",
-//         to_json(copy_icon(settings, &filename, banner_path)?),
-//       );
-//     }
-
-//     if let Some(dialog_image_path) = &wix.dialog_image_path {
-//       let filename = dialog_image_path
-//         .file_name()
-//         .unwrap()
-//         .to_string_lossy()
-//         .into_owned();
-//       data.insert(
-//         "dialog_image_path",
-//         to_json(copy_icon(settings, &filename, dialog_image_path)?),
-//       );
-//     }
-//   }
-
-//   if !has_custom_template {
-//     handlebars
-//       .register_template_string("main.wxs", include_str!("../templates/main.wxs"))
-//       .map_err(|e| e.to_string())
-//       .expect("Failed to setup handlebar template");
-//   }
-
-//   if enable_elevated_update_task {
-//     data.insert(
-//       "msiexec_args",
-//       to_json(
-//         settings
-//           .updater()
-//           .and_then(|updater| updater.msiexec_args)
-//           .map(|args| args.join(" "))
-//           .unwrap_or_else(|| "/passive".to_string()),
-//       ),
-//     );
-
-//     // Create the update task XML
-//     let mut skip_uac_task = Handlebars::new();
-//     let xml = include_str!("../templates/update-task.xml");
-//     skip_uac_task
-//       .register_template_string("update.xml", xml)
-//       .map_err(|e| e.to_string())
-//       .expect("Failed to setup Update Task handlebars");
-//     let temp_xml_path = output_path.join("update.xml");
-//     let update_content = skip_uac_task.render("update.xml", &data)?;
-//     write(temp_xml_path, update_content)?;
-
-//     // Create the Powershell script to install the task
-//     let mut skip_uac_task_installer = Handlebars::new();
-//     let xml = include_str!("../templates/install-task.ps1");
-//     skip_uac_task_installer
-//       .register_template_string("install-task.ps1", xml)
-//       .map_err(|e| e.to_string())
-//       .expect("Failed to setup Update Task Installer handlebars");
-//     let temp_ps1_path = output_path.join("install-task.ps1");
-//     let install_script_content = skip_uac_task_installer.render("install-task.ps1", &data)?;
-//     write(temp_ps1_path, install_script_content)?;
-
-//     // Create the Powershell script to uninstall the task
-//     let mut skip_uac_task_uninstaller = Handlebars::new();
-//     let xml = include_str!("../templates/uninstall-task.ps1");
-//     skip_uac_task_uninstaller
-//       .register_template_string("uninstall-task.ps1", xml)
-//       .map_err(|e| e.to_string())
-//       .expect("Failed to setup Update Task Uninstaller handlebars");
-//     let temp_ps1_path = output_path.join("uninstall-task.ps1");
-//     let install_script_content = skip_uac_task_uninstaller.render("uninstall-task.ps1", &data)?;
-//     write(temp_ps1_path, install_script_content)?;
-
-//     data.insert("enable_elevated_update_task", to_json(true));
-//   }
-
-//   let main_wxs_path = output_path.join("main.wxs");
-//   write(main_wxs_path, handlebars.render("main.wxs", &data)?)?;
-
-//   let mut candle_inputs = vec![("main.wxs".into(), Vec::new())];
-
-//   let current_dir = std::env::current_dir()?;
-//   let extension_regex = Regex::new("\"http://schemas.microsoft.com/wix/(\\w+)\"")?;
-//   for fragment_path in fragment_paths {
-//     let fragment_path = current_dir.join(fragment_path);
-//     let fragment = read_to_string(&fragment_path)?;
-//     let mut extensions = Vec::new();
-//     for cap in extension_regex.captures_iter(&fragment) {
-//       extensions.push(wix_toolset_path.join(format!("Wix{}.dll", &cap[1])));
-//     }
-//     candle_inputs.push((fragment_path, extensions));
-//   }
-
-//   let mut fragment_extensions = Vec::new();
-//   for (path, extensions) in candle_inputs {
-//     fragment_extensions.extend(extensions.clone());
-//     if wix_ver == 3 {
-//       run_candle(settings, wix_toolset_path, &output_path, path, extensions)?;
-//     }
-//   }
-
-//   let mut output_paths = Vec::new();
-
-//   for (language, language_config) in configured_languages.0 {
-//     let language_metadata = language_map.get(&language).unwrap_or_else(|| {
-//       panic!(
-//         "Language {} not found. It must be one of {}",
-//         language,
-//         language_map
-//           .keys()
-//           .cloned()
-//           .collect::<Vec<String>>()
-//           .join(", ")
-//       )
-//     });
-
-//     let locale_contents = match language_config.locale_path {
-//       Some(p) => read_to_string(p)?,
-//       None => format!(
-//         r#"<WixLocalization Culture="{}" xmlns="http://schemas.microsoft.com/wix/2006/localization"></WixLocalization>"#,
-//         language.to_lowercase(),
-//       ),
-//     };
-
-//     let locale_strings = include_str!("./default-locale-strings.xml")
-//       .replace("__language__", &language_metadata.lang_id.to_string())
-//       .replace("__codepage__", &language_metadata.ascii_code.to_string())
-//       .replace("__productName__", settings.product_name());
-
-//     let mut unset_locale_strings = String::new();
-//     let prefix_len = "<String ".len();
-//     for locale_string in locale_strings.split('\n').filter(|s| !s.is_empty()) {
-//       // strip `<String ` prefix and `>{value}</String` suffix.
-//       let id = locale_string
-//         .chars()
-//         .skip(prefix_len)
-//         .take(locale_string.find('>').unwrap() - prefix_len)
-//         .collect::<String>();
-//       if !locale_contents.contains(&id) {
-//         unset_locale_strings.push_str(locale_string);
-//       }
-//     }
-
-//     let locale_contents = locale_contents.replace(
-//       "</WixLocalization>",
-//       &format!("{}</WixLocalization>", unset_locale_strings),
-//     );
-//     let locale_path = output_path.join("locale.wxl");
-//     {
-//       let mut fileout = File::create(&locale_path).expect("Failed to create locale file");
-//       fileout.write_all(locale_contents.as_bytes())?;
-//     }
-
-//     let arguments = vec![
-//       format!(
-//         "-cultures:{}",
-//         if language == "en-US" {
-//           language.to_lowercase()
-//         } else {
-//           format!("{};en-US", language.to_lowercase())
-//         }
-//       ),
-//       "-loc".into(),
-//       display_path(&locale_path),
-//       "*.wixobj".into(),
-//     ];
-//     let msi_output_path = output_path.join("output.msi");
-//     let msi_path = app_installer_output_path(settings, &language, &app_version, updater)?;
-//     create_dir_all(msi_path.parent().unwrap())?;
-
-//     info!(action = "Running"; "light to produce {}", display_path(&msi_path));
-
-//     if wix_ver == 3 {
-//       run_light(
-//         wix_toolset_path,
-//         &output_path,
-//         arguments,
-//         &fragment_extensions,
-//         &msi_output_path,
-//       )?;
-//     }
-
-//     rename(&msi_output_path, &msi_path)?;
-//     try_sign(&msi_path, settings)?;
-//     output_paths.push(msi_path);
-//   }
-
-//   Ok(output_paths)
-// }
-
-// /// Generates the data required for the external binaries and extra binaries bundling.
-// fn generate_binaries_data(settings: &Settings) -> crate::Result<Vec<Binary>> {
-//   let mut binaries = Vec::new();
-//   let cwd = std::env::current_dir()?;
-//   let tmp_dir = std::env::temp_dir();
-//   let regex = Regex::new(r"[^\w\d\.]")?;
-//   for src in settings.external_binaries() {
-//     let src = src?;
-//     let binary_path = cwd.join(&src);
-//     let dest_filename = src
-//       .file_name()
-//       .expect("failed to extract external binary filename")
-//       .to_string_lossy()
-//       .replace(&format!("-{}", settings.target()), "");
-//     let dest = tmp_dir.join(&dest_filename);
-//     std::fs::copy(binary_path, &dest)?;
-
-//     binaries.push(Binary {
-//       guid: Uuid::new_v4().to_string(),
-//       path: dest
-//         .into_os_string()
-//         .into_string()
-//         .expect("failed to read external binary path"),
-//       id: regex
-//         .replace_all(&dest_filename.replace('-', "_"), "")
-//         .to_string(),
-//     });
-//   }
-
-//   for bin in settings.binaries() {
-//     if !bin.main() {
-//       binaries.push(Binary {
-//         guid: Uuid::new_v4().to_string(),
-//         path: settings
-//           .binary_path(bin)
-//           .into_os_string()
-//           .into_string()
-//           .expect("failed to read binary path"),
-//         id: regex
-//           .replace_all(&bin.name().replace('-', "_"), "")
-//           .to_string(),
-//       })
-//     }
-//   }
-
-//   Ok(binaries)
 // }
 
 // Entry point for bundling and creating the MSI installer. For now the only supported platform is Windows x64.
@@ -1155,7 +655,8 @@ pub fn build_wix_app_installer(
 
   let mut fragment_paths = Vec::new();
   let mut handlebars = Handlebars::new();
-  let mut has_custom_template = false;
+  handlebars.register_escape_fn(handlebars::no_escape);
+  let mut custom_template_path = None;
   let mut enable_elevated_update_task = false;
 
   if let Some(wix) = &settings.windows().wix {
@@ -1166,15 +667,7 @@ pub fn build_wix_app_installer(
     data.insert("merge_refs", to_json(&wix.merge_refs));
     fragment_paths = wix.fragment_paths.clone();
     enable_elevated_update_task = wix.enable_elevated_update_task;
-
-    if let Some(temp_path) = &wix.template {
-      let template = read_to_string(temp_path)?;
-      handlebars
-        .register_template_string("main.wxs", &template)
-        .map_err(|e| e.to_string())
-        .expect("Failed to setup custom handlebar template");
-      has_custom_template = true;
-    }
+    custom_template_path = wix.template.clone();
 
     if let Some(banner_path) = &wix.banner_path {
       let filename = banner_path
@@ -1201,7 +694,12 @@ pub fn build_wix_app_installer(
     }
   }
 
-  if !has_custom_template {
+  if let Some(path) = custom_template_path {
+    handlebars
+      .register_template_string("main.wxs", read_to_string(path)?)
+      .map_err(|e| e.to_string())
+      .expect("Failed to setup custom handlebar template");
+  } else {
     handlebars
       .register_template_string("main.wxs", include_str!("../templates/main.wxs"))
       .map_err(|e| e.to_string())
@@ -1233,6 +731,7 @@ pub fn build_wix_app_installer(
 
     // Create the Powershell script to install the task
     let mut skip_uac_task_installer = Handlebars::new();
+    skip_uac_task_installer.register_escape_fn(handlebars::no_escape);
     let xml = include_str!("../templates/install-task.ps1");
     skip_uac_task_installer
       .register_template_string("install-task.ps1", xml)
@@ -1244,6 +743,7 @@ pub fn build_wix_app_installer(
 
     // Create the Powershell script to uninstall the task
     let mut skip_uac_task_uninstaller = Handlebars::new();
+    skip_uac_task_uninstaller.register_escape_fn(handlebars::no_escape);
     let xml = include_str!("../templates/uninstall-task.ps1");
     skip_uac_task_uninstaller
       .register_template_string("uninstall-task.ps1", xml)
@@ -1259,7 +759,11 @@ pub fn build_wix_app_installer(
   let main_wxs_path = output_path.join("main.wxs");
   write(main_wxs_path.clone(), handlebars.render("main.wxs", &data)?)?;
 
-  let mut fragment_extensions = Vec::new();
+  let mut fragment_extensions = HashSet::new();
+  //Default extensions
+  fragment_extensions.insert(wix_toolset_path.join("WixUIExtension.dll"));
+  fragment_extensions.insert(wix_toolset_path.join("WixUtilExtension.dll"));
+
 
   if wix_version == 4 {
     //convert wxs file
@@ -1280,7 +784,9 @@ pub fn build_wix_app_installer(
     }
 
     for (path, extensions) in candle_inputs {
-      fragment_extensions.extend(extensions.clone());
+      for ext in &extensions {
+        fragment_extensions.insert(ext.clone());
+      }
       run_candle(settings, wix_toolset_path, &output_path, path, extensions)?;
     }
   }
@@ -1372,7 +878,7 @@ pub fn build_wix_app_installer(
         wix_toolset_path,
         &output_path,
         arguments,
-        &fragment_extensions,
+        &(fragment_extensions.clone().into_iter().collect()),
         &msi_output_path,
       )?;
     }

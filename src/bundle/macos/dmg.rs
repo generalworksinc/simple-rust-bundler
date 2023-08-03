@@ -6,8 +6,7 @@
 use super::{app, icon::create_icns_file};
 use crate::{
   bundle::{common::CommandExt, Bundle},
-  PackageType::MacOsBundle,
-  Settings,
+  PackageType, Settings,
 };
 
 use anyhow::Context;
@@ -16,23 +15,27 @@ use log::info;
 use std::{
   env,
   fs::{self, write},
-  io::stdout,
   path::PathBuf,
   process::{Command, Stdio},
 };
 
+pub struct Bundled {
+  pub dmg: Vec<PathBuf>,
+  pub app: Vec<PathBuf>,
+}
+
 /// Bundles the project.
 /// Returns a vector of PathBuf that shows where the DMG was created.
-pub fn bundle_project(settings: &Settings, bundles: &[Bundle]) -> crate::Result<Vec<PathBuf>> {
+pub fn bundle_project(settings: &Settings, bundles: &[Bundle]) -> crate::Result<Bundled> {
   // generate the .app bundle if needed
-  if bundles
+  let app_bundle_paths = if !bundles
     .iter()
-    .filter(|bundle| bundle.package_type == MacOsBundle)
-    .count()
-    == 0
+    .any(|bundle| bundle.package_type == PackageType::MacOsBundle)
   {
-    app::bundle_project(settings)?;
-  }
+    app::bundle_project(settings)?
+  } else {
+    Vec::new()
+  };
 
   // get the target path
   let output_path = settings.project_out_directory().join("bundle/dmg");
@@ -140,30 +143,12 @@ pub fn bundle_project(settings: &Settings, bundles: &[Bundle]) -> crate::Result<
   info!(action = "Running"; "bundle_dmg.sh");
 
   // execute the bundle script
-  match Command::new(&bundle_script_path)
+  Command::new(&bundle_script_path)
     .current_dir(bundle_dir.clone())
     .args(args)
     .args(vec![dmg_name.as_str(), bundle_file_name.as_str()])
-    .spawn()
-  {
-    Ok(mut child) => {
-      let status = child.wait()?;
-      if let Some(out) = child.stdout {
-        println!("stdout: {:?}", out);
-      }
-      if let Some(err) = child.stderr {
-        println!("stdout: {:?}", err);
-      }
-      if !status.success() {
-        return Err(anyhow::Error::msg("error running bundle_dmg status error.").into());
-      }
-    }
-    Err(e) => {
-      println!("error running bundle_dmg.: {:?}", e);
-      return Err(anyhow::Error::from(e).into());
-      // return Err(crate::Error::GenericError(format!("wix failed with error: {}", e)));
-    }
-  };
+    .output_ok()
+    .context("error running bundle_dmg.sh")?;
 
   fs::rename(bundle_dir.join(dmg_name), dmg_path.clone())?;
 
@@ -171,5 +156,9 @@ pub fn bundle_project(settings: &Settings, bundles: &[Bundle]) -> crate::Result<
   if let Some(identity) = &settings.macos().signing_identity {
     super::sign::sign(dmg_path.clone(), identity, settings, false)?;
   }
-  Ok(vec![dmg_path])
+
+  Ok(Bundled {
+    dmg: vec![dmg_path],
+    app: app_bundle_paths,
+  })
 }

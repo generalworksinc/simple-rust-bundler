@@ -1,0 +1,14 @@
+[simple-rust-bundler]
+tauriの中に含まれる、bundler(↓以下URL参照）を元に、tauriではなく一般的に使えるように修正したbundler。
+https://github.com/tauri-apps/tauri/tree/dev/tooling/bundler
+
+
+[tauri_bundlerの最新状態にマージの方法]
+
+①現在のgeneralworksと、元のbundlerの差分が分かるようにする。
+ - 前回にマージした際のhttps://github.com/generalworksinc/tauri_bundler (今回で言うと、tauri-bundler-1.3)と、現在のsimple-rust-bundler(https://github.com/generalworksinc/simple-rust-bundler)の差分）
+
+②tauri_bundlerの最新→simple_bundlerにデータをマージしていく。その中で、①で確認した自分の更新は反映させないようにする。
+
+定期的にこれを実施する。（tauri2.0以降、mobileが含まれてくるので、どこまで追っていくかは都度判断する）
+
