@@ -87,6 +87,7 @@ pub fn bundle_project(settings: &Settings) -> crate::Result<Vec<PathBuf>> {
   let control_dir = package_dir.join("control");
   generate_control_file(settings, arch, &control_dir, &data_dir)
     .with_context(|| "Failed to create control file")?;
+  // add by generalworksinc start-------------
   // Generate postinst files
   // let postinst_dir = package_dir.join("postinst");
   generate_postinst(settings, &control_dir).with_context(|| "Failed to create control file")?;
@@ -94,6 +95,7 @@ pub fn bundle_project(settings: &Settings) -> crate::Result<Vec<PathBuf>> {
   // Generate prerm files
   // let prerm_dir = package_dir.join("prerm");
   generate_prerm(settings, &control_dir).with_context(|| "Failed to create control file")?;
+  // add by generalworksinc end  -------------
 
   generate_md5sums(&control_dir, &data_dir).with_context(|| "Failed to create md5sums file")?;
 
@@ -273,6 +275,7 @@ fn generate_md5sums(control_dir: &Path, data_dir: &Path) -> crate::Result<()> {
   Ok(())
 }
 
+// add by generalworksinc start-------------
 fn generate_postinst(settings: &Settings, control_dir: &Path) -> crate::Result<Option<PathBuf>> {
   if let Some(postinst_path) = settings.deb().postinst_path.clone() {
     let dest_path = control_dir.join("postinst");
@@ -293,6 +296,7 @@ fn generate_prerm(settings: &Settings, control_dir: &Path) -> crate::Result<Opti
     Ok(None)
   }
 }
+// add by generalworksinc end  -------------
 
 /// Copy the bundle's resource files into an appropriate directory under the
 /// `data_dir`.
@@ -396,10 +400,20 @@ fn create_tar_from_dir<P: AsRef<Path>, W: Write>(src_dir: P, dest_file: W) -> cr
     }
     let dest_path = src_path.strip_prefix(src_dir)?;
     if entry.file_type().is_dir() {
-      tar_builder.append_dir(dest_path, src_path)?;
+      let stat = fs::metadata(src_path)?;
+      let mut header = tar::Header::new_gnu();
+      header.set_metadata(&stat);
+      header.set_uid(0);
+      header.set_gid(0);
+      tar_builder.append_data(&mut header, dest_path, &mut io::empty())?;
     } else {
       let mut src_file = fs::File::open(src_path)?;
-      tar_builder.append_file(dest_path, &mut src_file)?;
+      let stat = src_file.metadata()?;
+      let mut header = tar::Header::new_gnu();
+      header.set_metadata(&stat);
+      header.set_uid(0);
+      header.set_gid(0);
+      tar_builder.append_data(&mut header, dest_path, &mut src_file)?;
     }
   }
   let dest_file = tar_builder.into_inner()?;

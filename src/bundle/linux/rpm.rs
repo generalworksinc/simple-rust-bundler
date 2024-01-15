@@ -7,12 +7,14 @@ use crate::Settings;
 use anyhow::Context;
 use log::info;
 use rpm::signature::pgp::{Signer, Verifier};
-use rpm::{self, RPMError, RPMPackage};
+use rpm::{self, Error as RPMError, Scriptlet};
 use std::path::Path;
 use std::path::PathBuf;
 use std::str::FromStr;
 
 /// Bundles the project.
+
+// add by generalworksinc start-------------
 pub fn bundle_project(settings: &Settings) -> crate::Result<Vec<PathBuf>> {
   // unimplemented!();
   match rpm_bundle(settings) {
@@ -59,7 +61,7 @@ fn rpm_bundle(settings: &Settings) -> anyhow::Result<PathBuf, RPMError> {
   //   .map_err(|_| RPMError::Nom("Failed to build data folders and files".to_string()))?;
 
   // let raw_secret_key = std::fs::read("/path/to/gpg.secret.key")?;
-  let mut pkg_builder = rpm::RPMBuilder::new(
+  let mut pkg_builder = rpm::PackageBuilder::new(
     package_base_name.as_str(),
     settings.version_string(),
     "MIT",
@@ -67,7 +69,7 @@ fn rpm_bundle(settings: &Settings) -> anyhow::Result<PathBuf, RPMError> {
     settings.binary_arch(),
     settings.short_description(),
   )
-  .compression(rpm::Compressor::from_str("gzip")?);
+  .compression(rpm::CompressionType::Gzip);
   // .with_file(
   //     "./awesome-config.toml",
   //     rpm::RPMFileOptions::new("/etc/awesome/config.toml").is_config(),
@@ -85,7 +87,7 @@ fn rpm_bundle(settings: &Settings) -> anyhow::Result<PathBuf, RPMError> {
     pkg_builder = pkg_builder.with_file(
       settings.binary_path(binary),
       //   rpm::RPMFileOptions::new(binary.src_path().unwrap()), // format!("/usr/bin/{}", binary.name())
-      rpm::RPMFileOptions::new(format!("/usr/bin/{}", binary.name())),
+      rpm::FileOptions::new(format!("/usr/bin/{}", binary.name())),
     )?;
   }
   //package other files
@@ -98,7 +100,7 @@ fn rpm_bundle(settings: &Settings) -> anyhow::Result<PathBuf, RPMError> {
     if path.is_file() {
       println!("{:?} -> {:?}", path, rpm_path);
       pkg_builder =
-        pkg_builder.with_file(path, rpm::RPMFileOptions::new(rpm_path.to_string_lossy()))?;
+        pkg_builder.with_file(path, rpm::FileOptions::new(rpm_path.to_string_lossy()))?;
       // common::copy_file(path, data_dir.join(rpm_path)).map_err(|e| RPMError::Nom(e.to_string()))?;
     } else {
       // let out_dir = data_dir.join(rpm_path);
@@ -113,7 +115,7 @@ fn rpm_bundle(settings: &Settings) -> anyhow::Result<PathBuf, RPMError> {
           );
           pkg_builder = pkg_builder.with_file(
             &entry_path,
-            rpm::RPMFileOptions::new(rpm_path.join(without_prefix).to_string_lossy()),
+            rpm::FileOptions::new(rpm_path.join(without_prefix).to_string_lossy()),
           )?;
 
           // common::copy_file(&entry_path, out_dir.join(without_prefix))
@@ -151,13 +153,13 @@ fn rpm_bundle(settings: &Settings) -> anyhow::Result<PathBuf, RPMError> {
   // settings::rpm::pre_install_script(settings
   println!("test 5...................");
   if let Some(prerm_path) = settings.rpm().prerm_path.as_ref() {
-    pkg_builder = pkg_builder.pre_uninstall_script(prerm_path);
+    pkg_builder = pkg_builder.pre_uninstall_script(Scriptlet::new(prerm_path));
   }
   // set scripts(post inst)
   if let Some(postinst_path) = settings.rpm().postinst_path.as_ref() {
     let postinst_pathbuf = PathBuf::from(postinst_path);
     if let Ok(body) = std::fs::read_to_string(postinst_pathbuf.clone()) {
-      pkg_builder = pkg_builder.post_install_script(body);
+      pkg_builder = pkg_builder.post_install_script(Scriptlet::new(body));
     } else {
       return Err(RPMError::Nom(format!(
         "can't read {:?} postinst_path.",
@@ -169,7 +171,7 @@ fn rpm_bundle(settings: &Settings) -> anyhow::Result<PathBuf, RPMError> {
   if let Some(prerm_path) = settings.rpm().prerm_path.as_ref() {
     let prerm_pathbuf = PathBuf::from(prerm_path);
     if let Ok(body) = std::fs::read_to_string(prerm_pathbuf.clone()) {
-      pkg_builder = pkg_builder.pre_uninstall_script(body);
+      pkg_builder = pkg_builder.pre_uninstall_script(Scriptlet::new(body));
     } else {
       return Err(RPMError::Nom(format!(
         "can't read {:?} postinst_path.",
@@ -238,3 +240,4 @@ fn copy_resource_files(settings: &Settings, data_dir: &Path) -> crate::Result<()
   let resource_dir = data_dir.join("usr/lib").join(settings.main_binary_name());
   settings.copy_resources(&resource_dir)
 }
+// add by generalworksinc end-------------

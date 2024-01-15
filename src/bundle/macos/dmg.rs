@@ -51,8 +51,10 @@ pub fn bundle_project(settings: &Settings, bundles: &[Bundle]) -> crate::Result<
   let dmg_name = format!("{}.dmg", &package_base_name);
   let dmg_path = output_path.join(&dmg_name);
 
+  // change by generalworksinc start-------------
   // let product_name = settings.main_binary_name();
   let product_name = settings.product_name();
+  // change by generalworksinc end  -------------
   let bundle_file_name = format!("{}.app", product_name);
   let bundle_dir = settings.project_out_directory().join("bundle/macos");
 
@@ -154,7 +156,14 @@ pub fn bundle_project(settings: &Settings, bundles: &[Bundle]) -> crate::Result<
 
   // Sign DMG if needed
   if let Some(identity) = &settings.macos().signing_identity {
-    super::sign::sign(dmg_path.clone(), identity, settings, false)?;
+    super::sign::sign(
+      vec![super::sign::SignTarget {
+        path: dmg_path.clone(),
+        is_an_executable: false,
+      }],
+      identity,
+      settings,
+    )?;
   }
 
   Ok(Bundled {

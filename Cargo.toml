@@ -4,24 +4,17 @@
 edition = "2021"
 rust-version = "1.71"
 name = "simple-rust-bundler"
-version = "0.0.2"
+version = "0.0.3"
 authors = [
-  "Masato Yuna <masato.yuna@gmail.com>",
-  "George Burton <burtonageo@gmail.com>",
-  "Tauri Programme within The Commons Conservancy"
+    "Masato Yuna <masato.yuna@gmail.com>",
+    "George Burton <burtonageo@gmail.com>",
+    "Tauri Programme within The Commons Conservancy",
 ]
-exclude = [
-    "CHANGELOG.md",
-    "/target",
-    "rustfmt.toml",
-]
+exclude = ["CHANGELOG.md", "/target", "rustfmt.toml"]
 description = "rust bundle tool from tauri bundler fork"
 readme = "README.md"
 keywords = []
-categories = [
-    "command-line-utilities",
-    "development-tools::cargo-plugins",
-]
+categories = ["command-line-utilities", "development-tools::cargo-plugins"]
 license = "Apache-2.0 OR MIT"
 repository = "https://github.com/generalworksinc/simple-rust-bundler.git"
 
@@ -31,7 +24,7 @@ name = "simple_bundler"
 path = "src/lib.rs"
 
 [dependencies]
-rpm = "0.9.0"
+rpm = "0.13.1"
 
 [dependencies.anyhow]
 version = "1.0"
@@ -43,19 +36,19 @@ version = "2.0"
 version = "1"
 
 [dependencies.handlebars]
-version = "4.3"
+version = "4.5"
 
 [dependencies.hex]
 version = "0.4"
 
 [dependencies.image]
-version = "0.24.6"
+version = "0.24.7"
 
 [dependencies.libflate]
-version = "1.4"
+version = "2.0"
 
 [dependencies.log]
-version = "0.4.19"
+version = "0.4.20"
 features = ["kv_unstable"]
 
 [dependencies.native-tls]
@@ -82,23 +75,23 @@ version = "0.10"
 version = "0.10"
 
 [dependencies.strsim]
-version = "0.10.0"
+version = "0.11.0"
 
 [dependencies.tar]
-version = "0.4.38"
+version = "0.4.40"
 
 [dependencies.tauri-utils]
-version = "1.4.0"
+version = "1.5.2"
 features = ["resources"]
 
 [dependencies.tempfile]
-version = "3.6.0"
+version = "3.8.1"
 
 [dependencies.thiserror]
 version = "1.0"
 
 [dependencies.ureq]
-version = "2.6"
+version = "2.9.1"
 default-features = false
 
 [dependencies.walkdir]
@@ -110,10 +103,7 @@ version = "0.6"
 [features]
 default = ["rustls"]
 native-tls = ["ureq/native-tls"]
-native-tls-vendored = [
-    "native-tls",
-    "native-tls/vendored",
-]
+native-tls-vendored = ["native-tls", "native-tls/vendored"]
 rustls = ["ureq/tls"]
 
 [target."cfg(any(target_os = \"macos\", target_os = \"windows\"))".dependencies.regex]
@@ -139,18 +129,23 @@ version = "1"
 version = "0.3"
 features = ["formatting"]
 
-[target."cfg(target_os = \"windows\")".dependencies.bitness]
-version = "0.4"
+#[target."cfg(target_os = \"windows\")".dependencies.bitness]
+#version = "0.4"
 
 [target."cfg(target_os = \"windows\")".dependencies.glob]
 version = "0.3"
 
 [target."cfg(target_os = \"windows\")".dependencies.uuid]
 version = "1"
-features = [
-    "v4",
-    "v5",
-]
+features = ["v4", "v5"]
 
 [target."cfg(target_os = \"windows\")".dependencies.winreg]
-version = "0.50"
+version = "0.52.0"
+
+[target."cfg(target_os = \"windows\")".dependencies.windows-sys]
+version = "0.48"
+features = [
+"Win32_System_SystemInformation",
+"Win32_System_Diagnostics_Debug"
+]
+

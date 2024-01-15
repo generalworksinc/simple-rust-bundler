@@ -7,8 +7,18 @@ https://github.com/tauri-apps/tauri/tree/dev/tooling/bundler
 
 ①現在のgeneralworksと、元のbundlerの差分が分かるようにする。
  - 前回にマージした際のhttps://github.com/generalworksinc/tauri_bundler (今回で言うと、tauri-bundler-1.3)と、現在のsimple-rust-bundler(https://github.com/generalworksinc/simple-rust-bundler)の差分）
+ ※マージしたときのtauriのリポジトリのタグやcommit hashを記録しておくこと！
 
 ②tauri_bundlerの最新→simple_bundlerにデータをマージしていく。その中で、①で確認した自分の更新は反映させないようにする。
-
 定期的にこれを実施する。（tauri2.0以降、mobileが含まれてくるので、どこまで追っていくかは都度判断する）
 
+
+
+20240115
+tauri:1.5.4, tauri-bundler@1.4.8
+from repository：https://github.com/tauri-apps/tauri/blob/tauri-v1.5.4/tooling/bundler/Cargo.toml
+
+
+202408
+tauri-utils@1.4.0, tauri-bundler@1.3.0
+from repository: https://github.com/tauri-apps/tauri/tree/tauri-utils-v1.4.0
