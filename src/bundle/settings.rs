@@ -38,6 +38,10 @@ pub enum PackageType {
   Dmg,
   /// The Updater bundle.
   Updater,
+  // add by generalworksinc start  -------------
+  /// The macOS pkg bundle (.pkg).
+  Pkg,
+  // add by generalworksinc end    -------------
 }
 
 impl From<BundleType> for PackageType {
@@ -50,6 +54,7 @@ impl From<BundleType> for PackageType {
       BundleType::App => Self::MacOsBundle,
       BundleType::Dmg => Self::Dmg,
       BundleType::Updater => Self::Updater,
+      BundleType::Pkg => Self::Pkg,
     }
   }
 }
@@ -69,6 +74,7 @@ impl PackageType {
       "appimage" => Some(PackageType::AppImage),
       "dmg" => Some(PackageType::Dmg),
       "updater" => Some(PackageType::Updater),
+      "pkg" => Some(PackageType::Pkg),
       _ => None,
     }
   }
@@ -86,6 +92,7 @@ impl PackageType {
       PackageType::AppImage => "appimage",
       PackageType::Dmg => "dmg",
       PackageType::Updater => "updater",
+      PackageType::Pkg => "pkg",
     }
   }
 
@@ -111,6 +118,7 @@ impl PackageType {
       PackageType::AppImage => 0,
       PackageType::Dmg => 1,
       PackageType::Updater => 2,
+      PackageType::Pkg => 1,
     }
   }
 }
@@ -130,6 +138,8 @@ const ALL_PACKAGE_TYPES: &[PackageType] = &[
   PackageType::Rpm,
   #[cfg(target_os = "macos")]
   PackageType::Dmg,
+  #[cfg(target_os = "macos")]
+  PackageType::Pkg,
   #[cfg(target_os = "linux")]
   PackageType::AppImage,
   PackageType::Updater,
@@ -189,6 +199,14 @@ pub struct DebianSettings {
   pub postinst_path: Option<String>,
   pub prerm_path: Option<String>,
 }
+
+#[derive(Clone, Debug, Default)]
+pub struct PkgSettings {
+  // OS-specific settings:
+  pub postinst_dir_path: Option<String>,
+  pub identifier: Option<String>,
+}
+
 
 /// The Linux RPM bundle settings.
 #[derive(Clone, Debug, Default)]
@@ -442,6 +460,8 @@ pub struct BundleSettings {
 // add by generalworksinc start  -------------
   /// RPM-specific settings.
   pub rpm: RpmSettings,
+  /// Pkg(MacOS)-specific settings.
+  pub pkg: PkgSettings,
 // add by generalworksinc end    -------------
   /// MacOS-specific settings.
   pub macos: MacOsSettings,
@@ -711,7 +731,7 @@ impl Settings {
       .replace("darwin", "macos");
 
     let mut platform_types = match target_os.as_str() {
-      "macos" => vec![PackageType::MacOsBundle, PackageType::Dmg],
+      "macos" => vec![PackageType::MacOsBundle, PackageType::Dmg,  PackageType::Pkg],
       "ios" => vec![PackageType::IosBundle],
 // change by generalworksinc start-------------
       "linux" => vec![PackageType::Deb, PackageType::Rpm, PackageType::AppImage],
@@ -892,6 +912,13 @@ impl Settings {
     &self.bundle_settings.macos
   }
 
+  // Generalwokksinc add start ---
+  /// Returns the Pkg(MacOS) settings.
+  pub fn pkg(&self) -> &PkgSettings {
+    &self.bundle_settings.pkg
+  }
+  // Generalwokksinc add end   ---
+  
   /// Returns the Windows settings.
   pub fn windows(&self) -> &WindowsSettings {
     &self.bundle_settings.windows

@@ -22,7 +22,7 @@ pub use self::{
   settings::{
     BundleBinary, BundleSettings, DebianSettings, MacOsSettings, PackageSettings, PackageType,
 // change by generalworksinc start-------------
-    RpmSettings, Settings, SettingsBuilder, UpdaterSettings,
+    RpmSettings, Settings, SettingsBuilder, UpdaterSettings, PkgSettings,
 // change by generalworksinc end  -------------
   },
 };
@@ -51,7 +51,6 @@ pub fn bundle_project(settings: Settings) -> crate::Result<Vec<Bundle>> {
   }
 
   package_types.sort_by_key(|a| a.priority());
-
   let mut bundles: Vec<Bundle> = Vec::new();
 
   let target_os = settings
@@ -100,6 +99,19 @@ pub fn bundle_project(settings: Settings) -> crate::Result<Vec<Bundle>> {
       PackageType::MacOsBundle => macos::app::bundle_project(&settings)?,
       #[cfg(target_os = "macos")]
       PackageType::IosBundle => macos::ios::bundle_project(&settings)?,
+      // generalworksInc add start ---
+      #[cfg(target_os = "macos")]
+      PackageType::Pkg => {
+        let bundled = macos::pkg::bundle_project(&settings, &bundles)?;
+        if !bundled.app.is_empty() {
+          bundles.push(Bundle {
+            package_type: PackageType::MacOsBundle,
+            bundle_paths: bundled.app,
+          });
+        }
+        bundled.pkg
+      },
+      // generalworksInc add end   ---
       // dmg is dependant of MacOsBundle, we send our bundles to prevent rebuilding
       #[cfg(target_os = "macos")]
       PackageType::Dmg => {
@@ -135,6 +147,9 @@ pub fn bundle_project(settings: Settings) -> crate::Result<Vec<Bundle>> {
             PackageType::AppImage
               | PackageType::MacOsBundle
               | PackageType::Dmg
+              // add by generalworksinc start-------------
+              | PackageType::Pkg
+              // add by generalworksinc end  -------------
               | PackageType::Nsis
               | PackageType::WindowsMsi
           )

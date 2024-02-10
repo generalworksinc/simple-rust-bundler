@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Copyright Generalworks Inc.
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: MIT
+
+# Bail out on any unhandled errors
+set -ex;
+
+#!/bin/bash
+
+if [ "$5" != "" ]; then
+    SCRIPT_OPTION="--scripts $5"
+else
+    SCRIPT_OPTION=""
+fi
+
+pkgbuild --root $1/$2/ --identifier $4 --install-location /Applications/$2/ $SCRIPT_OPTION $3
