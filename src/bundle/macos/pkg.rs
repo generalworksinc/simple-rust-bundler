@@ -93,6 +93,7 @@ pub fn bundle_project(settings: &Settings, bundles: &[Bundle]) -> crate::Result<
     .output()
     .expect("Failed to chmod script");
   Command::new("chmod")
+    .arg("-rf")
     .arg("777")
     .arg(&bundle_dir.join("*"))
     .current_dir(&output_path)
