@@ -92,7 +92,14 @@ pub fn bundle_project(settings: &Settings, bundles: &[Bundle]) -> crate::Result<
     .stderr(Stdio::piped())
     .output()
     .expect("Failed to chmod script");
-
+  Command::new("chmod")
+    .arg("777")
+    .arg(&bundle_dir.join("*"))
+    .current_dir(&output_path)
+    .stdout(Stdio::piped())
+    .stderr(Stdio::piped())
+    .output()
+    .expect("Failed to chmod macos app bundle script");
     
   let mut args = vec![
     bundle_dir.to_string_lossy().to_string(),
