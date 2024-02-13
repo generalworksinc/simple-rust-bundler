@@ -14,6 +14,9 @@ mod platform;
 mod settings;
 mod updater_bundle;
 mod windows;
+// Generalworksinc add start---
+mod util;
+// Generalworksinc add end  ---
 
 use tauri_utils::display_path;
 

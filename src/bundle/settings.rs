@@ -7,9 +7,12 @@ use super::category::AppCategory;
 use crate::bundle::{common, platform::target_triple};
 pub use tauri_utils::config::WebviewInstallMode;
 use tauri_utils::{
-  config::{BundleType, NSISInstallerMode, NsisCompression},
+  config::{NSISInstallerMode, NsisCompression},
   resources::{external_binaries, ResourcePaths},
 };
+//Generalworks inc add start---
+pub use crate::bundle::util::BundleType;
+//Generalworks inc add end  ---
 
 use std::{
   collections::HashMap,
