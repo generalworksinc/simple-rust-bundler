@@ -39,6 +39,7 @@ use std::{
   ffi::OsStr,
   fs::{self, read_to_string, File},
   io::{self, Write},
+  os::unix::fs::PermissionsExt,
   path::{Path, PathBuf},
 };
 
@@ -281,6 +282,9 @@ fn generate_postinst(settings: &Settings, control_dir: &Path) -> crate::Result<O
     let dest_path = control_dir.join("postinst");
     common::copy_file(&postinst_path, dest_path.clone())
       .with_context(|| format!("Failed to copy binary from {:?}", postinst_path))?;
+    let mut permissions = fs::metadata(&dest_path)?.permissions();
+    permissions.set_mode(0o777);
+    fs::set_permissions(&dest_path, permissions)?;
     Ok(Some(dest_path))
   } else {
     Ok(None)
@@ -291,6 +295,9 @@ fn generate_prerm(settings: &Settings, control_dir: &Path) -> crate::Result<Opti
     let dest_path = control_dir.join("prerm");
     common::copy_file(&prerm_path, dest_path.clone())
       .with_context(|| format!("Failed to copy binary from {:?}", prerm_path))?;
+    let mut permissions = fs::metadata(&dest_path)?.permissions();
+    permissions.set_mode(0o777);
+    fs::set_permissions(&dest_path, permissions)?;
     Ok(Some(dest_path))
   } else {
     Ok(None)
