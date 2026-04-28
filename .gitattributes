@@ -1,0 +1,47 @@
+# デフォルトはテキストをLFで統一
+* text=auto eol=lf
+
+# 代表的なバイナリは改行変換しない
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.bmp   binary
+*.ico   binary
+*.webp  binary
+*.tif   binary
+*.tiff  binary
+*.psd   binary
+
+*.mp3   binary
+*.mp4   binary
+*.m4a   binary
+*.wav   binary
+*.flac  binary
+*.mov   binary
+*.avi   binary
+*.mkv   binary
+
+*.pdf   binary
+*.zip   binary
+*.tar   binary
+*.gz    binary
+*.tgz   binary
+*.bz2   binary
+*.xz    binary
+*.7z    binary
+*.rar   binary
+
+*.exe   binary
+*.dll   binary
+*.so    binary
+*.dylib binary
+*.a     binary
+*.lib   binary
+*.obj   binary
+
+*.ttf   binary
+*.otf   binary
+*.woff  binary
+*.woff2 binary
+
