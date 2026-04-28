@@ -600,7 +600,7 @@ pub fn build_wix_app_installer(settings: &Settings, updater: bool) -> crate::Res
     let locale_contents = match language_config.locale_path {
       Some(p) => read_to_string(p)?,
       None => format!(
-        r#"<WixLocalization Culture="{}" xmlns="http://schemas.microsoft.com/wix/2006/localization"></WixLocalization>"#,
+        r#"<WixLocalization Culture="{}" xmlns="http://wixtoolset.org/schemas/v4/wxl"></WixLocalization>"#,
         language.to_lowercase(),
       ),
     };
