@@ -23,10 +23,19 @@ use tauri_utils::display_path;
 pub use self::{
   category::AppCategory,
   settings::{
-    BundleBinary, BundleSettings, DebianSettings, MacOsSettings, PackageSettings, PackageType,
-// change by generalworksinc start-------------
-    RpmSettings, Settings, SettingsBuilder, UpdaterSettings, PkgSettings,
-// change by generalworksinc end  -------------
+    BundleBinary,
+    BundleSettings,
+    DebianSettings,
+    MacOsSettings,
+    PackageSettings,
+    PackageType,
+    PkgSettings,
+    // change by generalworksinc end  -------------
+    // change by generalworksinc start-------------
+    RpmSettings,
+    Settings,
+    SettingsBuilder,
+    UpdaterSettings,
   },
 };
 #[cfg(target_os = "macos")]
@@ -113,7 +122,7 @@ pub fn bundle_project(settings: Settings) -> crate::Result<Vec<Bundle>> {
           });
         }
         bundled.pkg
-      },
+      }
       // generalworksInc add end   ---
       // dmg is dependant of MacOsBundle, we send our bundles to prevent rebuilding
       #[cfg(target_os = "macos")]
@@ -130,9 +139,9 @@ pub fn bundle_project(settings: Settings) -> crate::Result<Vec<Bundle>> {
 
       #[cfg(target_os = "windows")]
       PackageType::WindowsMsi => windows::msi::bundle_project(&settings, false)?,
-// add by generalworksinc start-------------
+      // add by generalworksinc start-------------
       #[cfg(target_os = "windows")]
-// add by generalworksinc end  -------------
+      // add by generalworksinc end  -------------
       PackageType::Nsis => windows::nsis::bundle_project(&settings, false)?,
 
       #[cfg(target_os = "linux")]

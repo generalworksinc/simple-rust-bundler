@@ -58,12 +58,8 @@ pub fn bundle_project(settings: &Settings, bundles: &[Bundle]) -> crate::Result<
     fs::remove_dir_all(&output_path)
       .with_context(|| format!("Failed to remove old {}", pkg_name))?;
   }
-  fs::create_dir_all(&output_path).with_context(|| {
-    format!(
-      "Failed to create output directory at {:?}",
-      output_path
-    )
-  })?;
+  fs::create_dir_all(&output_path)
+    .with_context(|| format!("Failed to create output directory at {:?}", output_path))?;
 
   // fs::create_dir_all(&support_directory_path).with_context(|| {
   //   format!(
@@ -93,7 +89,6 @@ pub fn bundle_project(settings: &Settings, bundles: &[Bundle]) -> crate::Result<
     .output()
     .expect("Failed to chmod script");
 
-    
   let mut args = vec![
     bundle_dir.to_string_lossy().to_string(),
     bundle_file_name.clone(),
@@ -101,7 +96,7 @@ pub fn bundle_project(settings: &Settings, bundles: &[Bundle]) -> crate::Result<
     //identifier
     //script name
   ];
-  
+
   let pkg_settings = settings.pkg();
   if let Some(x) = pkg_settings.identifier.clone() {
     args.push(x);
@@ -111,7 +106,7 @@ pub fn bundle_project(settings: &Settings, bundles: &[Bundle]) -> crate::Result<
   if let Some(x) = pkg_settings.postinst_dir_path.clone() {
     args.push(x);
   }
-  
+
   info!(action = "Running"; "bundle_pkg.sh");
 
   println!("bundle_script_path: {:?} {:?}", bundle_script_path, args);

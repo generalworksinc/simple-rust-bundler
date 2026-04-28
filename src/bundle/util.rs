@@ -1,7 +1,5 @@
+use serde::{de::Error as DeError, Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt::Display;
-use serde::{Serialize, Deserialize, Serializer, Deserializer, de::Error as DeError};
-
-
 
 /// A bundle referenced by tauri-bundler.
 #[derive(Debug, PartialEq, Eq, Clone)]

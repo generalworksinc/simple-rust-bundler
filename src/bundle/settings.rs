@@ -198,7 +198,7 @@ pub struct DebianSettings {
   #[doc = include_str!("./linux/templates/main.desktop")]
   /// ```
   pub desktop_template: Option<PathBuf>,
-// add by generalworksinc start  -------------
+  // add by generalworksinc start  -------------
   pub postinst_path: Option<String>,
   pub prerm_path: Option<String>,
 }
@@ -209,7 +209,6 @@ pub struct PkgSettings {
   pub postinst_dir_path: Option<String>,
   pub identifier: Option<String>,
 }
-
 
 /// The Linux RPM bundle settings.
 #[derive(Clone, Debug, Default)]
@@ -222,7 +221,7 @@ pub struct RpmSettings {
   pub files: HashMap<PathBuf, PathBuf>,
   pub postinst_path: Option<String>,
   pub prerm_path: Option<String>,
-// add by generalworksinc end    -------------
+  // add by generalworksinc end    -------------
 }
 
 /// The macOS bundle settings.
@@ -314,10 +313,10 @@ pub struct WixSettings {
   pub dialog_image_path: Option<PathBuf>,
   /// Enables FIPS compliant algorithms.
   pub fips_compliant: bool,
-// add by generalworksinc start  -------------
+  // add by generalworksinc start  -------------
   /// version 3 or 4
   pub version: Option<u16>,
-// add by generalworksinc end    -------------
+  // add by generalworksinc end    -------------
 }
 
 /// Settings specific to the NSIS implementation.
@@ -460,12 +459,12 @@ pub struct BundleSettings {
   pub external_bin: Option<Vec<String>>,
   /// Debian-specific settings.
   pub deb: DebianSettings,
-// add by generalworksinc start  -------------
+  // add by generalworksinc start  -------------
   /// RPM-specific settings.
   pub rpm: RpmSettings,
   /// Pkg(MacOS)-specific settings.
   pub pkg: PkgSettings,
-// add by generalworksinc end    -------------
+  // add by generalworksinc end    -------------
   /// MacOS-specific settings.
   pub macos: MacOsSettings,
   /// Updater configuration.
@@ -699,16 +698,16 @@ impl Settings {
 
   /// Returns the path to the specified binary.
   pub fn binary_path(&self, binary: &BundleBinary) -> PathBuf {
-// change by generalworksinc start  -------------
+    // change by generalworksinc start  -------------
     match binary.src_path {
       Some(ref path) => PathBuf::from(path),
       None => {
         let mut path = self.project_out_directory.clone();
         path.push(binary.name());
         path
-      },
+      }
     }
-// change by generalworksinc end    -------------
+    // change by generalworksinc end    -------------
   }
 
   /// Returns the list of binaries to bundle.
@@ -734,11 +733,11 @@ impl Settings {
       .replace("darwin", "macos");
 
     let mut platform_types = match target_os.as_str() {
-      "macos" => vec![PackageType::MacOsBundle, PackageType::Dmg,  PackageType::Pkg],
+      "macos" => vec![PackageType::MacOsBundle, PackageType::Dmg, PackageType::Pkg],
       "ios" => vec![PackageType::IosBundle],
-// change by generalworksinc start-------------
+      // change by generalworksinc start-------------
       "linux" => vec![PackageType::Deb, PackageType::Rpm, PackageType::AppImage],
-// change by generalworksinc end  -------------
+      // change by generalworksinc end  -------------
       "windows" => vec![PackageType::WindowsMsi, PackageType::Nsis],
       os => {
         return Err(crate::Error::GenericError(format!(
@@ -899,12 +898,12 @@ impl Settings {
   pub fn long_description(&self) -> Option<&str> {
     self.bundle_settings.long_description.as_deref()
   }
-// add by generalworksinc start-------------
+  // add by generalworksinc start-------------
   /// Returns the debian settings.
   pub fn rpm(&self) -> &RpmSettings {
     &self.bundle_settings.rpm
   }
-// add by generalworksinc end  -------------
+  // add by generalworksinc end  -------------
   /// Returns the debian settings.
   pub fn deb(&self) -> &DebianSettings {
     &self.bundle_settings.deb
@@ -921,7 +920,7 @@ impl Settings {
     &self.bundle_settings.pkg
   }
   // Generalwokksinc add end   ---
-  
+
   /// Returns the Windows settings.
   pub fn windows(&self) -> &WindowsSettings {
     &self.bundle_settings.windows

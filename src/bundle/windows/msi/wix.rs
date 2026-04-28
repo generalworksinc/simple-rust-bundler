@@ -236,7 +236,7 @@ pub fn get_and_extract_wix(path: &Path, version: u16) -> crate::Result<()> {
   } else {
     download_and_verify(WIX_URL_V3, WIX_SHA256_V3, HashAlgorithm::Sha256)?
   };
-// change by generalworksinc end  -------------
+  // change by generalworksinc end  -------------
   info!("extracting WIX");
 
   extract_zip(&data, path)
@@ -387,7 +387,7 @@ fn run_candle(
     cmd.arg(ext);
   }
   clear_env_for_wix(&mut cmd);
-// change by generalworksinc start-------------
+  // change by generalworksinc start-------------
   match cmd.args(&args).current_dir(cwd).spawn() {
     Ok(mut child) => {
       let status = child.wait()?;
@@ -413,7 +413,7 @@ fn run_candle(
     }
   }
   // .context("error running candle.exe")?;
-// change by generalworksinc end  -------------
+  // change by generalworksinc end  -------------
 
   Ok(())
 }
@@ -493,7 +493,7 @@ fn run_light(
     cmd.arg(ext);
   }
   clear_env_for_wix(&mut cmd);
-// change by generalworksinc start-------------
+  // change by generalworksinc start-------------
   match cmd.args(&args).current_dir(build_path).spawn() {
     Ok(mut child) => {
       let status = child.wait()?;
@@ -518,7 +518,7 @@ fn run_light(
       )));
     }
   }
-// change by generalworksinc end  -------------
+  // change by generalworksinc end  -------------
   Ok(())
 }
 
@@ -532,12 +532,12 @@ pub fn build_wix_app_installer(
   wix_toolset_path: &Path,
   updater: bool,
 ) -> crate::Result<Vec<PathBuf>> {
-// add by generalworksinc start-------------
+  // add by generalworksinc start-------------
   let wix_version = match settings.windows().wix.as_ref().and_then(|x| x.version) {
     Some(4) => 4,
     _ => 3,
   };
-// add by generalworksinc end  -------------
+  // add by generalworksinc end  -------------
   let arch = match settings.binary_arch() {
     "x86_64" => "x64",
     "x86" => "x86",
@@ -569,7 +569,7 @@ pub fn build_wix_app_installer(
   create_dir_all(&output_path)?;
 
   let mut data = BTreeMap::new();
-// delete webview_install process by generalworksinc -------------
+  // delete webview_install process by generalworksinc -------------
 
   let language_map: HashMap<String, LanguageMetadata> =
     serde_json::from_str(include_str!("./languages.json")).unwrap();
@@ -767,16 +767,16 @@ pub fn build_wix_app_installer(
   }
 
   let main_wxs_path = output_path.join("main.wxs");
-// change by generalworksinc start-------------
+  // change by generalworksinc start-------------
   write(main_wxs_path.clone(), handlebars.render("main.wxs", &data)?)?;
-// change by generalworksinc end  -------------
+  // change by generalworksinc end  -------------
 
   let mut fragment_extensions = HashSet::new();
   //Default extensions
   fragment_extensions.insert(wix_toolset_path.join("WixUIExtension.dll"));
   fragment_extensions.insert(wix_toolset_path.join("WixUtilExtension.dll"));
 
-// change by generalworksinc start-------------
+  // change by generalworksinc start-------------
   if wix_version == 4 {
     //convert wxs file
     run_convert(settings, wix_toolset_path, main_wxs_path.clone().as_path())?;
@@ -802,7 +802,7 @@ pub fn build_wix_app_installer(
       run_candle(settings, wix_toolset_path, &output_path, path, extensions)?;
     }
   }
-// change by generalworksinc end  -------------
+  // change by generalworksinc end  -------------
 
   let mut output_paths = Vec::new();
 
@@ -875,7 +875,7 @@ pub fn build_wix_app_installer(
 
     info!(action = "Running"; "light to produce {}", display_path(&msi_path));
 
-// change by generalworksinc start-------------
+    // change by generalworksinc start-------------
     if wix_version == 4 {
       let current_dir = std::env::current_exe()?;
 
@@ -896,7 +896,7 @@ pub fn build_wix_app_installer(
         &msi_output_path,
       )?;
     }
-// change by generalworksinc end  -------------
+    // change by generalworksinc end  -------------
 
     rename(&msi_output_path, &msi_path)?;
     try_sign(&msi_path, settings)?;
