@@ -674,7 +674,7 @@ impl Settings {
       .unwrap_or(std::env::consts::OS)
       .replace("darwin", "macos");
 
-    let mut platform_types = match target_os.as_str() {
+    let platform_types = match target_os.as_str() {
       "macos" => vec![PackageType::MacOsBundle, PackageType::Dmg, PackageType::Pkg],
       "linux" => vec![PackageType::Deb, PackageType::Rpm, PackageType::AppImage],
       "windows" => vec![PackageType::WindowsMsi, PackageType::Nsis],

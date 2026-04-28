@@ -30,18 +30,13 @@ pub enum NsisCompression {
   Lzma,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Default, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub enum NSISInstallerMode {
+  #[default]
   CurrentUser,
   PerMachine,
   Both,
-}
-
-impl Default for NSISInstallerMode {
-  fn default() -> Self {
-    Self::CurrentUser
-  }
 }
 
 impl Display for BundleType {

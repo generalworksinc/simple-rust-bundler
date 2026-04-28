@@ -165,7 +165,7 @@ fn add_build_number_if_needed(version_str: &str) -> anyhow::Result<String> {
 fn build_nsis_app_installer(
   settings: &Settings,
   _nsis_toolset_path: &Path,
-  tauri_tools_path: &Path,
+  _tauri_tools_path: &Path,
   updater: bool,
 ) -> crate::Result<Vec<PathBuf>> {
   let arch = match settings.binary_arch() {
