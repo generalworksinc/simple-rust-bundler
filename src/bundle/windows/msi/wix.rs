@@ -6,12 +6,13 @@
 use crate::bundle::{
   common::CommandExt,
   path_utils::{copy_file, FileOpts},
+  resources::display_path,
   settings::Settings,
   windows::{
     sign::try_sign,
     util::{
-      download_and_verify, download_webview2_bootstrapper, download_webview2_offline_installer,
-      extract_zip, HashAlgorithm, WIX_OUTPUT_FOLDER_NAME, WIX_UPDATER_OUTPUT_FOLDER_NAME,
+      download_and_verify, extract_zip, HashAlgorithm, WIX_OUTPUT_FOLDER_NAME,
+      WIX_UPDATER_OUTPUT_FOLDER_NAME,
     },
   },
 };
@@ -27,18 +28,15 @@ use std::{
   path::{Path, PathBuf},
   process::Command,
 };
-use tauri_utils::{config::WebviewInstallMode, display_path};
 use uuid::Uuid;
 
 // URLS for the WIX toolchain.  Can be used for cross-platform compilation.
-// change by generalworksinc start-------------
 pub const WIX_URL_V3: &str =
   "https://github.com/wixtoolset/wix3/releases/download/wix3112rtm/wix311-binaries.zip";
 pub const WIX_SHA256_V3: &str = "2c1888d5d1dba377fc7fa14444cf556963747ff9a0a289a3599cf09da03b9e2e";
 
 pub const WIX_URL_V4: &str = "https://www.nuget.org/api/v2/package/wix/4.0.0";
 pub const WIX_SHA256_V4: &str = "b134c7d8b335a32c94363a763bbf78fd5d351761007374b434f6aaf3111ff94c";
-// change by generalworksinc end  -------------
 
 // For Cross Platform Compilation.
 
@@ -227,7 +225,6 @@ fn generate_guid(key: &[u8]) -> Uuid {
 }
 
 // Specifically goes and gets Wix and verifies the download via Sha256
-// change by generalworksinc start-------------
 pub fn get_and_extract_wix(path: &Path, version: u16) -> crate::Result<()> {
   info!("Verifying wix package");
 
@@ -236,7 +233,6 @@ pub fn get_and_extract_wix(path: &Path, version: u16) -> crate::Result<()> {
   } else {
     download_and_verify(WIX_URL_V3, WIX_SHA256_V3, HashAlgorithm::Sha256)?
   };
-  // change by generalworksinc end  -------------
   info!("extracting WIX");
 
   extract_zip(&data, path)
@@ -293,7 +289,6 @@ pub fn convert_version(version_str: &str) -> anyhow::Result<String> {
 
   Ok(version_str.to_string())
 }
-// add by generalworksinc start-------------
 fn run_convert(
   settings: &Settings,
   wix_toolset_path: &Path,
@@ -331,7 +326,6 @@ fn run_convert(
   }
   Ok(())
 }
-// add by generalworksinc end  -------------
 
 /// Runs the Candle.exe executable for Wix. Candle parses the wxs file and generates the code for building the installer.
 fn run_candle(
@@ -387,7 +381,6 @@ fn run_candle(
     cmd.arg(ext);
   }
   clear_env_for_wix(&mut cmd);
-  // change by generalworksinc start-------------
   match cmd.args(&args).current_dir(cwd).spawn() {
     Ok(mut child) => {
       let status = child.wait()?;
@@ -413,12 +406,9 @@ fn run_candle(
     }
   }
   // .context("error running candle.exe")?;
-  // change by generalworksinc end  -------------
 
   Ok(())
 }
-
-// add by generalworksinc start-------------
 fn run_wix(
   wix_toolset_path: &Path,
   build_path: &Path,
@@ -471,7 +461,6 @@ fn run_wix(
 
   Ok(())
 }
-// add by generalworksinc end  -------------
 
 /// Runs the Light.exe file. Light takes the generated code from Candle and produces an MSI Installer.
 fn run_light(
@@ -493,7 +482,6 @@ fn run_light(
     cmd.arg(ext);
   }
   clear_env_for_wix(&mut cmd);
-  // change by generalworksinc start-------------
   match cmd.args(&args).current_dir(build_path).spawn() {
     Ok(mut child) => {
       let status = child.wait()?;
@@ -518,7 +506,6 @@ fn run_light(
       )));
     }
   }
-  // change by generalworksinc end  -------------
   Ok(())
 }
 
@@ -532,12 +519,10 @@ pub fn build_wix_app_installer(
   wix_toolset_path: &Path,
   updater: bool,
 ) -> crate::Result<Vec<PathBuf>> {
-  // add by generalworksinc start-------------
   let wix_version = match settings.windows().wix.as_ref().and_then(|x| x.version) {
     Some(4) => 4,
     _ => 3,
   };
-  // add by generalworksinc end  -------------
   let arch = match settings.binary_arch() {
     "x86_64" => "x64",
     "x86" => "x86",
@@ -569,7 +554,6 @@ pub fn build_wix_app_installer(
   create_dir_all(&output_path)?;
 
   let mut data = BTreeMap::new();
-  // delete webview_install process by generalworksinc -------------
 
   let language_map: HashMap<String, LanguageMetadata> =
     serde_json::from_str(include_str!("./languages.json")).unwrap();
@@ -717,16 +701,7 @@ pub fn build_wix_app_installer(
   }
 
   if enable_elevated_update_task {
-    data.insert(
-      "msiexec_args",
-      to_json(
-        settings
-          .updater()
-          .and_then(|updater| updater.msiexec_args)
-          .map(|args| args.join(" "))
-          .unwrap_or_else(|| "/passive".to_string()),
-      ),
-    );
+    data.insert("msiexec_args", to_json("/passive"));
 
     // Create the update task XML
     let mut skip_uac_task = Handlebars::new();
@@ -767,16 +742,12 @@ pub fn build_wix_app_installer(
   }
 
   let main_wxs_path = output_path.join("main.wxs");
-  // change by generalworksinc start-------------
   write(main_wxs_path.clone(), handlebars.render("main.wxs", &data)?)?;
-  // change by generalworksinc end  -------------
 
   let mut fragment_extensions = HashSet::new();
   //Default extensions
   fragment_extensions.insert(wix_toolset_path.join("WixUIExtension.dll"));
   fragment_extensions.insert(wix_toolset_path.join("WixUtilExtension.dll"));
-
-  // change by generalworksinc start-------------
   if wix_version == 4 {
     //convert wxs file
     run_convert(settings, wix_toolset_path, main_wxs_path.clone().as_path())?;
@@ -802,7 +773,6 @@ pub fn build_wix_app_installer(
       run_candle(settings, wix_toolset_path, &output_path, path, extensions)?;
     }
   }
-  // change by generalworksinc end  -------------
 
   let mut output_paths = Vec::new();
 
@@ -874,8 +844,6 @@ pub fn build_wix_app_installer(
     create_dir_all(msi_path.parent().unwrap())?;
 
     info!(action = "Running"; "light to produce {}", display_path(&msi_path));
-
-    // change by generalworksinc start-------------
     if wix_version == 4 {
       let current_dir = std::env::current_exe()?;
 
@@ -896,7 +864,6 @@ pub fn build_wix_app_installer(
         &msi_output_path,
       )?;
     }
-    // change by generalworksinc end  -------------
 
     rename(&msi_output_path, &msi_path)?;
     try_sign(&msi_path, settings)?;
@@ -999,7 +966,7 @@ fn generate_resource_data(settings: &Settings) -> crate::Result<ResourceMap> {
     let src = cwd.join(resource.path());
     let resource_path = dunce::simplified(&src).to_path_buf();
     // In some glob resource paths like `assets/**/*` a file might appear twice
-    // because the `tauri_utils::resources::ResourcePaths` iterator also reads a directory
+    // because the resource iterator also reads a directory
     // when it finds one. So we must check it before processing the file.
     if added_resources.contains(&resource_path) {
       continue;

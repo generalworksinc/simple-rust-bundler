@@ -4,15 +4,10 @@
 // SPDX-License-Identifier: MIT
 
 use super::category::AppCategory;
-use crate::bundle::{common, platform::target_triple};
-pub use tauri_utils::config::WebviewInstallMode;
-use tauri_utils::{
-  config::{NSISInstallerMode, NsisCompression},
-  resources::{external_binaries, ResourcePaths},
-};
-//Generalworks inc add start---
+use crate::bundle::resources::{external_binaries, ResourcePaths};
 pub use crate::bundle::util::BundleType;
-//Generalworks inc add end  ---
+pub use crate::bundle::util::{NSISInstallerMode, NsisCompression};
+use crate::bundle::{common, platform::target_triple};
 
 use std::{
   collections::HashMap,
@@ -25,8 +20,6 @@ use std::{
 pub enum PackageType {
   /// The macOS application bundle (.app).
   MacOsBundle,
-  /// The iOS app bundle.
-  IosBundle,
   /// The Windows bundle (.msi).
   WindowsMsi,
   /// The NSIS bundle (.exe).
@@ -39,12 +32,8 @@ pub enum PackageType {
   AppImage,
   /// The macOS DMG bundle (.dmg).
   Dmg,
-  /// The Updater bundle.
-  Updater,
-  // add by generalworksinc start  -------------
   /// The macOS pkg bundle (.pkg).
   Pkg,
-  // add by generalworksinc end    -------------
 }
 
 impl From<BundleType> for PackageType {
@@ -56,7 +45,6 @@ impl From<BundleType> for PackageType {
       BundleType::Nsis => Self::Nsis,
       BundleType::App => Self::MacOsBundle,
       BundleType::Dmg => Self::Dmg,
-      BundleType::Updater => Self::Updater,
       BundleType::Pkg => Self::Pkg,
     }
   }
@@ -64,19 +52,17 @@ impl From<BundleType> for PackageType {
 
 impl PackageType {
   /// Maps a short name to a PackageType.
-  /// Possible values are "deb", "ios", "msi", "app", "rpm", "appimage", "dmg", "updater".
+  /// Possible values are "deb", "msi", "app", "rpm", "appimage", "dmg", "pkg".
   pub fn from_short_name(name: &str) -> Option<PackageType> {
     // Other types we may eventually want to support: apk.
     match name {
       "deb" => Some(PackageType::Deb),
-      "ios" => Some(PackageType::IosBundle),
       "msi" => Some(PackageType::WindowsMsi),
       "nsis" => Some(PackageType::Nsis),
       "app" => Some(PackageType::MacOsBundle),
       "rpm" => Some(PackageType::Rpm),
       "appimage" => Some(PackageType::AppImage),
       "dmg" => Some(PackageType::Dmg),
-      "updater" => Some(PackageType::Updater),
       "pkg" => Some(PackageType::Pkg),
       _ => None,
     }
@@ -87,14 +73,12 @@ impl PackageType {
   pub fn short_name(&self) -> &'static str {
     match *self {
       PackageType::Deb => "deb",
-      PackageType::IosBundle => "ios",
       PackageType::WindowsMsi => "msi",
       PackageType::Nsis => "nsis",
       PackageType::MacOsBundle => "app",
       PackageType::Rpm => "rpm",
       PackageType::AppImage => "appimage",
       PackageType::Dmg => "dmg",
-      PackageType::Updater => "updater",
       PackageType::Pkg => "pkg",
     }
   }
@@ -113,14 +97,12 @@ impl PackageType {
   pub fn priority(&self) -> u32 {
     match self {
       PackageType::MacOsBundle => 0,
-      PackageType::IosBundle => 0,
       PackageType::WindowsMsi => 0,
       PackageType::Nsis => 0,
       PackageType::Deb => 0,
       PackageType::Rpm => 0,
       PackageType::AppImage => 0,
       PackageType::Dmg => 1,
-      PackageType::Updater => 2,
       PackageType::Pkg => 1,
     }
   }
@@ -129,8 +111,6 @@ impl PackageType {
 const ALL_PACKAGE_TYPES: &[PackageType] = &[
   #[cfg(target_os = "linux")]
   PackageType::Deb,
-  #[cfg(target_os = "macos")]
-  PackageType::IosBundle,
   #[cfg(target_os = "windows")]
   PackageType::WindowsMsi,
   #[cfg(target_os = "windows")]
@@ -145,7 +125,6 @@ const ALL_PACKAGE_TYPES: &[PackageType] = &[
   PackageType::Pkg,
   #[cfg(target_os = "linux")]
   PackageType::AppImage,
-  PackageType::Updater,
 ];
 
 /// The package settings.
@@ -163,21 +142,6 @@ pub struct PackageSettings {
   pub authors: Option<Vec<String>>,
   /// the default binary to run.
   pub default_run: Option<String>,
-}
-
-/// The updater settings.
-#[derive(Debug, Default, Clone)]
-pub struct UpdaterSettings {
-  /// Whether the updater is active or not.
-  pub active: bool,
-  /// The updater endpoints.
-  pub endpoints: Option<Vec<String>>,
-  /// Signature public key.
-  pub pubkey: String,
-  /// Display built-in dialog or use event system if disabled.
-  pub dialog: bool,
-  /// Args to pass to `msiexec.exe` to run the updater on Windows.
-  pub msiexec_args: Option<&'static [&'static str]>,
 }
 
 /// The Linux debian bundle settings.
@@ -198,7 +162,6 @@ pub struct DebianSettings {
   #[doc = include_str!("./linux/templates/main.desktop")]
   /// ```
   pub desktop_template: Option<PathBuf>,
-  // add by generalworksinc start  -------------
   pub postinst_path: Option<String>,
   pub prerm_path: Option<String>,
 }
@@ -221,7 +184,6 @@ pub struct RpmSettings {
   pub files: HashMap<PathBuf, PathBuf>,
   pub postinst_path: Option<String>,
   pub prerm_path: Option<String>,
-  // add by generalworksinc end    -------------
 }
 
 /// The macOS bundle settings.
@@ -295,8 +257,6 @@ pub struct WixSettings {
   pub feature_refs: Vec<String>,
   /// The Merge element ids you want to reference from the fragments.
   pub merge_refs: Vec<String>,
-  /// Disables the Webview2 runtime installation after app install. Will be removed in v2, use [`WindowsSettings::webview_install_mode`] instead.
-  pub skip_webview_install: bool,
   /// The path to the LICENSE file.
   pub license: Option<PathBuf>,
   /// Create an elevated update task within Windows Task Scheduler.
@@ -313,10 +273,8 @@ pub struct WixSettings {
   pub dialog_image_path: Option<PathBuf>,
   /// Enables FIPS compliant algorithms.
   pub fips_compliant: bool,
-  // add by generalworksinc start  -------------
   /// version 3 or 4
   pub version: Option<u16>,
-  // add by generalworksinc end    -------------
 }
 
 /// Settings specific to the NSIS implementation.
@@ -376,14 +334,6 @@ pub struct WindowsSettings {
   pub nsis: Option<NsisSettings>,
   /// The path to the application icon. Defaults to `./icons/icon.ico`.
   pub icon_path: PathBuf,
-  /// The installation mode for the Webview2 runtime.
-  pub webview_install_mode: WebviewInstallMode,
-  /// Path to the webview fixed runtime to use.
-  ///
-  /// Overwrites [`Self::webview_install_mode`] if set.
-  ///
-  /// Will be removed in v2, use [`Self::webview_install_mode`] instead.
-  pub webview_fixed_runtime_path: Option<PathBuf>,
   /// Validates a second app installation, blocking the user from installing an older version if set to `false`.
   ///
   /// For instance, if `1.2.1` is installed, the user won't be able to install app version `1.2.0` or `1.1.5`.
@@ -402,8 +352,6 @@ impl Default for WindowsSettings {
       wix: None,
       nsis: None,
       icon_path: PathBuf::from("icons/icon.ico"),
-      webview_install_mode: Default::default(),
-      webview_fixed_runtime_path: None,
       allow_downgrades: true,
     }
   }
@@ -459,16 +407,12 @@ pub struct BundleSettings {
   pub external_bin: Option<Vec<String>>,
   /// Debian-specific settings.
   pub deb: DebianSettings,
-  // add by generalworksinc start  -------------
   /// RPM-specific settings.
   pub rpm: RpmSettings,
   /// Pkg(MacOS)-specific settings.
   pub pkg: PkgSettings,
-  // add by generalworksinc end    -------------
   /// MacOS-specific settings.
   pub macos: MacOsSettings,
-  /// Updater configuration.
-  pub updater: Option<UpdaterSettings>,
   /// Windows-specific settings.
   pub windows: WindowsSettings,
 }
@@ -698,7 +642,6 @@ impl Settings {
 
   /// Returns the path to the specified binary.
   pub fn binary_path(&self, binary: &BundleBinary) -> PathBuf {
-    // change by generalworksinc start  -------------
     match binary.src_path {
       Some(ref path) => PathBuf::from(path),
       None => {
@@ -707,7 +650,6 @@ impl Settings {
         path
       }
     }
-    // change by generalworksinc end    -------------
   }
 
   /// Returns the list of binaries to bundle.
@@ -734,10 +676,7 @@ impl Settings {
 
     let mut platform_types = match target_os.as_str() {
       "macos" => vec![PackageType::MacOsBundle, PackageType::Dmg, PackageType::Pkg],
-      "ios" => vec![PackageType::IosBundle],
-      // change by generalworksinc start-------------
       "linux" => vec![PackageType::Deb, PackageType::Rpm, PackageType::AppImage],
-      // change by generalworksinc end  -------------
       "windows" => vec![PackageType::WindowsMsi, PackageType::Nsis],
       os => {
         return Err(crate::Error::GenericError(format!(
@@ -746,11 +685,6 @@ impl Settings {
         )))
       }
     };
-
-    // add updater if needed
-    if self.is_update_enabled() {
-      platform_types.push(PackageType::Updater)
-    }
 
     if let Some(package_types) = &self.package_types {
       let mut types = vec![];
@@ -898,12 +832,10 @@ impl Settings {
   pub fn long_description(&self) -> Option<&str> {
     self.bundle_settings.long_description.as_deref()
   }
-  // add by generalworksinc start-------------
   /// Returns the debian settings.
   pub fn rpm(&self) -> &RpmSettings {
     &self.bundle_settings.rpm
   }
-  // add by generalworksinc end  -------------
   /// Returns the debian settings.
   pub fn deb(&self) -> &DebianSettings {
     &self.bundle_settings.deb
@@ -913,29 +845,13 @@ impl Settings {
   pub fn macos(&self) -> &MacOsSettings {
     &self.bundle_settings.macos
   }
-
-  // Generalwokksinc add start ---
   /// Returns the Pkg(MacOS) settings.
   pub fn pkg(&self) -> &PkgSettings {
     &self.bundle_settings.pkg
   }
-  // Generalwokksinc add end   ---
 
   /// Returns the Windows settings.
   pub fn windows(&self) -> &WindowsSettings {
     &self.bundle_settings.windows
-  }
-
-  /// Returns the Updater settings.
-  pub fn updater(&self) -> Option<&UpdaterSettings> {
-    self.bundle_settings.updater.as_ref()
-  }
-
-  /// Is update enabled
-  pub fn is_update_enabled(&self) -> bool {
-    match &self.bundle_settings.updater {
-      Some(val) => val.active,
-      None => false,
-    }
   }
 }

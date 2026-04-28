@@ -7,20 +7,19 @@ use crate::bundle::windows::sign::{sign_command, try_sign};
 use crate::{
   bundle::{
     common::CommandExt,
+    resources::display_path,
+    util::{NSISInstallerMode, NsisCompression},
     windows::util::{
-      download, download_and_verify, download_webview2_bootstrapper,
-      download_webview2_offline_installer, extract_zip, verify_file_hash, HashAlgorithm,
+      download, download_and_verify, extract_zip, verify_file_hash, HashAlgorithm,
       NSIS_OUTPUT_FOLDER_NAME, NSIS_UPDATER_OUTPUT_FOLDER_NAME,
     },
   },
   Settings,
 };
-use tauri_utils::display_path;
 
 use anyhow::Context;
 use handlebars::{to_json, Handlebars};
 use log::{info, warn};
-use tauri_utils::config::{NSISInstallerMode, NsisCompression, WebviewInstallMode};
 
 use std::{
   collections::{BTreeMap, HashMap},
@@ -70,7 +69,7 @@ const NSIS_REQUIRED_FILES_HASH: &[(&str, &str, &str, HashAlgorithm)] = &[(
 /// Runs all of the commands to build the NSIS installer.
 /// Returns a vector of PathBuf that shows where the NSIS installer was created.
 pub fn bundle_project(settings: &Settings, updater: bool) -> crate::Result<Vec<PathBuf>> {
-  let tauri_tools_path = dirs_next::cache_dir().unwrap().join("tauri");
+  let tauri_tools_path = dirs::cache_dir().unwrap().join("tauri");
   let nsis_toolset_path = tauri_tools_path.join("NSIS");
 
   if !nsis_toolset_path.exists() {
@@ -201,7 +200,7 @@ fn build_nsis_app_installer(
 
   #[cfg(not(target_os = "windows"))]
   {
-    let mut dir = dirs_next::cache_dir().unwrap();
+    let mut dir = dirs::cache_dir().unwrap();
     dir.extend(["tauri", "NSIS", "Plugins", "x86-unicode"]);
     data.insert("additional_plugins_path", to_json(dir));
   }
@@ -349,66 +348,8 @@ fn build_nsis_app_installer(
   let estimated_size = generate_estimated_size(&main_binary_path, &binaries, &resources)?;
   data.insert("estimated_size", to_json(estimated_size));
 
-  let silent_webview2_install = if let WebviewInstallMode::DownloadBootstrapper { silent }
-  | WebviewInstallMode::EmbedBootstrapper { silent }
-  | WebviewInstallMode::OfflineInstaller { silent } =
-    settings.windows().webview_install_mode
-  {
-    silent
-  } else {
-    true
-  };
-
-  let webview2_install_mode = if updater {
-    WebviewInstallMode::DownloadBootstrapper {
-      silent: silent_webview2_install,
-    }
-  } else {
-    let mut webview_install_mode = settings.windows().webview_install_mode.clone();
-    if let Some(fixed_runtime_path) = settings.windows().webview_fixed_runtime_path.clone() {
-      webview_install_mode = WebviewInstallMode::FixedRuntime {
-        path: fixed_runtime_path,
-      };
-    } else if let Some(wix) = &settings.windows().wix {
-      if wix.skip_webview_install {
-        webview_install_mode = WebviewInstallMode::Skip;
-      }
-    }
-    webview_install_mode
-  };
-
-  let webview2_installer_args = to_json(if silent_webview2_install {
-    "/silent"
-  } else {
-    ""
-  });
-
-  data.insert("webview2_installer_args", to_json(webview2_installer_args));
-  data.insert(
-    "install_webview2_mode",
-    to_json(match webview2_install_mode {
-      WebviewInstallMode::DownloadBootstrapper { silent: _ } => "downloadBootstrapper",
-      WebviewInstallMode::EmbedBootstrapper { silent: _ } => "embedBootstrapper",
-      WebviewInstallMode::OfflineInstaller { silent: _ } => "offlineInstaller",
-      _ => "",
-    }),
-  );
-
-  match webview2_install_mode {
-    WebviewInstallMode::EmbedBootstrapper { silent: _ } => {
-      let webview2_bootstrapper_path = download_webview2_bootstrapper(tauri_tools_path)?;
-      data.insert(
-        "webview2_bootstrapper_path",
-        to_json(webview2_bootstrapper_path),
-      );
-    }
-    WebviewInstallMode::OfflineInstaller { silent: _ } => {
-      let webview2_installer_path =
-        download_webview2_offline_installer(&tauri_tools_path.join(arch), arch)?;
-      data.insert("webview2_installer_path", to_json(webview2_installer_path));
-    }
-    _ => {}
-  }
+  data.insert("webview2_installer_args", to_json(""));
+  data.insert("install_webview2_mode", to_json(""));
 
   let mut handlebars = Handlebars::new();
   handlebars.register_escape_fn(|s| {
@@ -513,7 +454,7 @@ fn generate_resource_data(settings: &Settings) -> crate::Result<ResourcesMap> {
     let resource_path = dunce::simplified(&src).to_path_buf();
 
     // In some glob resource paths like `assets/**/*` a file might appear twice
-    // because the `tauri_utils::resources::ResourcePaths` iterator also reads a directory
+    // because the resource iterator also reads a directory
     // when it finds one. So we must check it before processing the file.
     if added_resources.contains(&resource_path) {
       continue;

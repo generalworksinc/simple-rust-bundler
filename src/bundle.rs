@@ -11,31 +11,18 @@ mod linux;
 mod macos;
 mod path_utils;
 mod platform;
+mod resources;
 mod settings;
-mod updater_bundle;
-mod windows;
-// Generalworksinc add start---
 mod util;
-// Generalworksinc add end  ---
+mod windows;
 
-use tauri_utils::display_path;
+use resources::display_path;
 
 pub use self::{
   category::AppCategory,
   settings::{
-    BundleBinary,
-    BundleSettings,
-    DebianSettings,
-    MacOsSettings,
-    PackageSettings,
-    PackageType,
-    PkgSettings,
-    // change by generalworksinc end  -------------
-    // change by generalworksinc start-------------
-    RpmSettings,
-    Settings,
-    SettingsBuilder,
-    UpdaterSettings,
+    BundleBinary, BundleSettings, DebianSettings, MacOsSettings, PackageSettings, PackageType,
+    PkgSettings, RpmSettings, Settings, SettingsBuilder,
   },
 };
 #[cfg(target_os = "macos")]
@@ -110,9 +97,6 @@ pub fn bundle_project(settings: Settings) -> crate::Result<Vec<Bundle>> {
       #[cfg(target_os = "macos")]
       PackageType::MacOsBundle => macos::app::bundle_project(&settings)?,
       #[cfg(target_os = "macos")]
-      PackageType::IosBundle => macos::ios::bundle_project(&settings)?,
-      // generalworksInc add start ---
-      #[cfg(target_os = "macos")]
       PackageType::Pkg => {
         let bundled = macos::pkg::bundle_project(&settings, &bundles)?;
         if !bundled.app.is_empty() {
@@ -123,7 +107,6 @@ pub fn bundle_project(settings: Settings) -> crate::Result<Vec<Bundle>> {
         }
         bundled.pkg
       }
-      // generalworksInc add end   ---
       // dmg is dependant of MacOsBundle, we send our bundles to prevent rebuilding
       #[cfg(target_os = "macos")]
       PackageType::Dmg => {
@@ -139,9 +122,7 @@ pub fn bundle_project(settings: Settings) -> crate::Result<Vec<Bundle>> {
 
       #[cfg(target_os = "windows")]
       PackageType::WindowsMsi => windows::msi::bundle_project(&settings, false)?,
-      // add by generalworksinc start-------------
       #[cfg(target_os = "windows")]
-      // add by generalworksinc end  -------------
       PackageType::Nsis => windows::nsis::bundle_project(&settings, false)?,
 
       #[cfg(target_os = "linux")]
@@ -151,26 +132,6 @@ pub fn bundle_project(settings: Settings) -> crate::Result<Vec<Bundle>> {
       #[cfg(target_os = "linux")]
       PackageType::AppImage => linux::appimage::bundle_project(&settings)?,
 
-      // updater is dependant of multiple bundle, we send our bundles to prevent rebuilding
-      PackageType::Updater => {
-        if !package_types.iter().any(|p| {
-          matches!(
-            p,
-            PackageType::AppImage
-              | PackageType::MacOsBundle
-              | PackageType::Dmg
-              // add by generalworksinc start-------------
-              | PackageType::Pkg
-              // add by generalworksinc end  -------------
-              | PackageType::Nsis
-              | PackageType::WindowsMsi
-          )
-        }) {
-          warn!("The updater bundle target exists but couldn't find any updater-enabled target, so the updater artifacts won't be generated. Please add one of these targets as well: app, appimage, msi, nsis");
-          continue;
-        }
-        updater_bundle::bundle_project(&settings, &bundles)?
-      }
       _ => {
         warn!("ignoring {}", package_type.short_name());
         continue;
@@ -185,7 +146,7 @@ pub fn bundle_project(settings: Settings) -> crate::Result<Vec<Bundle>> {
 
   #[cfg(target_os = "macos")]
   {
-    // Clean up .app if only building dmg or updater
+    // Clean up .app if only building dmg or pkg.
     if !package_types.contains(&PackageType::MacOsBundle) {
       if let Some(app_bundle_paths) = bundles
         .iter()
@@ -211,11 +172,7 @@ pub fn bundle_project(settings: Settings) -> crate::Result<Vec<Bundle>> {
   }
 
   if !bundles.is_empty() {
-    let bundles_wo_updater = bundles
-      .iter()
-      .filter(|b| b.package_type != PackageType::Updater)
-      .collect::<Vec<_>>();
-    let pluralised = if bundles_wo_updater.len() == 1 {
+    let pluralised = if bundles.len() == 1 {
       "bundle"
     } else {
       "bundles"
@@ -224,15 +181,11 @@ pub fn bundle_project(settings: Settings) -> crate::Result<Vec<Bundle>> {
     let mut printable_paths = String::new();
     for bundle in &bundles {
       for path in &bundle.bundle_paths {
-        let mut note = "";
-        if bundle.package_type == crate::PackageType::Updater {
-          note = " (updater)";
-        }
-        writeln!(printable_paths, "        {}{}", display_path(path), note).unwrap();
+        writeln!(printable_paths, "        {}", display_path(path)).unwrap();
       }
     }
 
-    info!(action = "Finished"; "{} {} at:\n{}", bundles_wo_updater.len(), pluralised, printable_paths);
+    info!(action = "Finished"; "{} {} at:\n{}", bundles.len(), pluralised, printable_paths);
 
     Ok(bundles)
   } else {

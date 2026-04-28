@@ -6,8 +6,5 @@
 pub mod app;
 pub mod dmg;
 pub mod icon;
-pub mod ios;
-pub mod sign;
-//Add GeneralworksInc Start
 pub mod pkg;
-//Add GeneralworksInc End
+pub mod sign;

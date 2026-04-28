@@ -10,9 +10,6 @@ use thiserror::Error as DeriveError;
 #[derive(Debug, DeriveError)]
 #[non_exhaustive]
 pub enum Error {
-  /// Error running tauri_utils API.
-  #[error("{0}")]
-  Resource(#[from] tauri_utils::Error),
   /// Bundler error.
   #[error("{0}")]
   BundlerError(#[from] anyhow::Error),
@@ -56,6 +53,14 @@ pub enum Error {
   GlobPattern(#[from] glob::PatternError),
   /// Failed to use glob pattern.
   #[cfg(windows)]
+  #[error("`{0}`")]
+  Glob(#[from] glob::GlobError),
+  /// Invalid glob pattern.
+  #[cfg(not(windows))]
+  #[error("{0}")]
+  GlobPattern(#[from] glob::PatternError),
+  /// Failed to use glob pattern.
+  #[cfg(not(windows))]
   #[error("`{0}`")]
   Glob(#[from] glob::GlobError),
   /// Failed to validate downloaded file hash.

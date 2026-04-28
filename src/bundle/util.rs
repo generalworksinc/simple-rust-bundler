@@ -20,8 +20,28 @@ pub enum BundleType {
   Dmg,
   /// The Apple Package bundle (.pkg).
   Pkg,
-  /// The Tauri updater bundle.
-  Updater,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub enum NsisCompression {
+  Zlib,
+  Bzip2,
+  Lzma,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub enum NSISInstallerMode {
+  CurrentUser,
+  PerMachine,
+  Both,
+}
+
+impl Default for NSISInstallerMode {
+  fn default() -> Self {
+    Self::CurrentUser
+  }
 }
 
 impl Display for BundleType {
@@ -37,7 +57,6 @@ impl Display for BundleType {
         Self::App => "app",
         Self::Dmg => "dmg",
         Self::Pkg => "pkg",
-        Self::Updater => "updater",
       }
     )
   }
@@ -65,7 +84,6 @@ impl<'de> Deserialize<'de> for BundleType {
       "nsis" => Ok(Self::Nsis),
       "app" => Ok(Self::App),
       "dmg" => Ok(Self::Dmg),
-      "updater" => Ok(Self::Updater),
       _ => Err(DeError::custom(format!("unknown bundle target '{s}'"))),
     }
   }

@@ -2,7 +2,7 @@
 
 [package]
 edition = "2021"
-rust-version = "1.71"
+rust-version = "1.95"
 name = "simple-rust-bundler"
 version = "0.0.3"
 authors = [
@@ -24,25 +24,28 @@ name = "simple_bundler"
 path = "src/lib.rs"
 
 [dependencies]
-rpm = "0.13.1"
+rpm = { version = "0.16", default-features = false, features = ["gzip-compression", "signature-pgp"] }
 
 [dependencies.anyhow]
 version = "1.0"
 
-[dependencies.dirs-next]
-version = "2.0"
+[dependencies.dirs]
+version = "6"
 
 [dependencies.dunce]
 version = "1"
 
 [dependencies.handlebars]
-version = "4.5"
+version = "6"
+
+[dependencies.glob]
+version = "0.3"
 
 [dependencies.hex]
 version = "0.4"
 
 [dependencies.image]
-version = "0.24.7"
+version = "0.25"
 
 [dependencies.libflate]
 version = "2.0"
@@ -80,31 +83,27 @@ version = "0.11.0"
 [dependencies.tar]
 version = "0.4.40"
 
-[dependencies.tauri-utils]
-version = "1.5.2"
-features = ["resources"]
-
 [dependencies.tempfile]
 version = "3.8.1"
 
 [dependencies.thiserror]
-version = "1.0"
+version = "2"
 
 [dependencies.ureq]
-version = "2.9.1"
+version = "3"
 default-features = false
 
 [dependencies.walkdir]
 version = "2"
 
 [dependencies.zip]
-version = "0.6"
+version = "4"
 
 [features]
 default = ["rustls"]
 native-tls = ["ureq/native-tls"]
 native-tls-vendored = ["native-tls", "native-tls/vendored"]
-rustls = ["ureq/tls"]
+rustls = ["ureq/rustls"]
 schema = []
 
 [target."cfg(any(target_os = \"macos\", target_os = \"windows\"))".dependencies.regex]
@@ -114,7 +113,7 @@ version = "1"
 version = "0.9.0"
 
 [target."cfg(target_os = \"linux\")".dependencies.heck]
-version = "0.4"
+version = "0.5"
 
 [target."cfg(target_os = \"linux\")".dependencies.md5]
 version = "0.7.0"
@@ -133,9 +132,6 @@ features = ["formatting"]
 #[target."cfg(target_os = \"windows\")".dependencies.bitness]
 #version = "0.4"
 
-[target."cfg(target_os = \"windows\")".dependencies.glob]
-version = "0.3"
-
 [target."cfg(target_os = \"windows\")".dependencies.uuid]
 version = "1"
 features = ["v4", "v5"]
@@ -144,7 +140,7 @@ features = ["v4", "v5"]
 version = "0.52.0"
 
 [target."cfg(target_os = \"windows\")".dependencies.windows-sys]
-version = "0.48"
+version = "0.60"
 features = [
 "Win32_System_SystemInformation",
 "Win32_System_Diagnostics_Debug"

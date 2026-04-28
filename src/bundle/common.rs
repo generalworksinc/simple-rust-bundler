@@ -220,8 +220,8 @@ impl CommandExt for Command {
 #[cfg(test)]
 mod tests {
   use super::{create_file, is_retina};
+  use crate::bundle::resources::resource_relpath;
   use std::{io::Write, path::PathBuf};
-  use tauri_utils::resources::resource_relpath;
 
   #[test]
   fn create_file_with_parent_dirs() {

@@ -13,8 +13,6 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 /// Bundles the project.
-
-// add by generalworksinc start-------------
 pub fn bundle_project(settings: &Settings) -> crate::Result<Vec<PathBuf>> {
   // unimplemented!();
   match rpm_bundle(settings) {
@@ -240,4 +238,3 @@ fn copy_resource_files(settings: &Settings, data_dir: &Path) -> crate::Result<()
   let resource_dir = data_dir.join("usr/lib").join(settings.main_binary_name());
   settings.copy_resources(&resource_dir)
 }
-// add by generalworksinc end-------------

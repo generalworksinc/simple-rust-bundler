@@ -1,5 +1,3 @@
-//Add GeneralworksInc Start
-
 use super::{app, icon::create_icns_file};
 use crate::{
   bundle::{common::CommandExt, Bundle},
@@ -125,4 +123,3 @@ pub fn bundle_project(settings: &Settings, bundles: &[Bundle]) -> crate::Result<
     app: app_bundle_paths,
   })
 }
-//Add GeneralworksInc End

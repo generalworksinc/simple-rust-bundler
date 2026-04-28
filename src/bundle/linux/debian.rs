@@ -38,7 +38,7 @@ use std::{
   collections::BTreeSet,
   ffi::OsStr,
   fs::{self, read_to_string, File},
-  io::{self, Write},
+  io::{self, BufReader, Write},
   os::unix::fs::PermissionsExt,
   path::{Path, PathBuf},
 };
@@ -88,7 +88,6 @@ pub fn bundle_project(settings: &Settings) -> crate::Result<Vec<PathBuf>> {
   let control_dir = package_dir.join("control");
   generate_control_file(settings, arch, &control_dir, &data_dir)
     .with_context(|| "Failed to create control file")?;
-  // add by generalworksinc start-------------
   // Generate postinst files
   // let postinst_dir = package_dir.join("postinst");
   generate_postinst(settings, &control_dir).with_context(|| "Failed to create control file")?;
@@ -96,7 +95,6 @@ pub fn bundle_project(settings: &Settings) -> crate::Result<Vec<PathBuf>> {
   // Generate prerm files
   // let prerm_dir = package_dir.join("prerm");
   generate_prerm(settings, &control_dir).with_context(|| "Failed to create control file")?;
-  // add by generalworksinc end  -------------
 
   generate_md5sums(&control_dir, &data_dir).with_context(|| "Failed to create md5sums file")?;
 
@@ -275,8 +273,6 @@ fn generate_md5sums(control_dir: &Path, data_dir: &Path) -> crate::Result<()> {
   }
   Ok(())
 }
-
-// add by generalworksinc start-------------
 fn generate_postinst(settings: &Settings, control_dir: &Path) -> crate::Result<Option<PathBuf>> {
   if let Some(postinst_path) = settings.deb().postinst_path.clone() {
     let dest_path = control_dir.join("postinst");
@@ -303,7 +299,6 @@ fn generate_prerm(settings: &Settings, control_dir: &Path) -> crate::Result<Opti
     Ok(None)
   }
 }
-// add by generalworksinc end  -------------
 
 /// Copy the bundle's resource files into an appropriate directory under the
 /// `data_dir`.
@@ -356,7 +351,7 @@ fn generate_icon_files(settings: &Settings, data_dir: &Path) -> crate::Result<BT
     }
     // Put file in scope so that it's closed when copying it
     let deb_icon = {
-      let decoder = PngDecoder::new(File::open(&icon_path)?)?;
+      let decoder = PngDecoder::new(BufReader::new(File::open(&icon_path)?))?;
       let width = decoder.dimensions().0;
       let height = decoder.dimensions().1;
       let is_high_density = common::is_retina(&icon_path);
