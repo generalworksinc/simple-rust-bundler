@@ -10,10 +10,7 @@ use crate::bundle::{
   settings::Settings,
   windows::{
     sign::try_sign,
-    util::{
-      download_and_verify, extract_zip, HashAlgorithm, WIX_OUTPUT_FOLDER_NAME,
-      WIX_UPDATER_OUTPUT_FOLDER_NAME,
-    },
+    util::{WIX_OUTPUT_FOLDER_NAME, WIX_UPDATER_OUTPUT_FOLDER_NAME},
   },
 };
 use anyhow::{bail, Context};
@@ -23,20 +20,12 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::{
   collections::{BTreeMap, HashMap, HashSet},
-  fs::{create_dir_all, read_to_string, remove_dir_all, rename, write, File},
+  fs::{copy, create_dir_all, read_to_string, remove_dir_all, write, File},
   io::Write,
   path::{Path, PathBuf},
   process::Command,
 };
 use uuid::Uuid;
-
-// URLS for the WIX toolchain.  Can be used for cross-platform compilation.
-pub const WIX_URL_V3: &str =
-  "https://github.com/wixtoolset/wix3/releases/download/wix3112rtm/wix311-binaries.zip";
-pub const WIX_SHA256_V3: &str = "2c1888d5d1dba377fc7fa14444cf556963747ff9a0a289a3599cf09da03b9e2e";
-
-pub const WIX_URL_V4: &str = "https://www.nuget.org/api/v2/package/wix/4.0.0";
-pub const WIX_SHA256_V4: &str = "b134c7d8b335a32c94363a763bbf78fd5d351761007374b434f6aaf3111ff94c";
 
 // For Cross Platform Compilation.
 
@@ -224,32 +213,6 @@ fn generate_guid(key: &[u8]) -> Uuid {
   Uuid::new_v5(&namespace, key)
 }
 
-// Specifically goes and gets Wix and verifies the download via Sha256
-pub fn get_and_extract_wix(path: &Path, version: u16) -> crate::Result<()> {
-  info!("Verifying wix package");
-
-  let data = if version == 4 {
-    download_and_verify(WIX_URL_V4, WIX_SHA256_V4, HashAlgorithm::Sha256)?
-  } else {
-    download_and_verify(WIX_URL_V3, WIX_SHA256_V3, HashAlgorithm::Sha256)?
-  };
-  info!("extracting WIX");
-
-  extract_zip(&data, path)
-}
-
-fn clear_env_for_wix(cmd: &mut Command) {
-  cmd.env_clear();
-  let required_vars: Vec<std::ffi::OsString> =
-    vec!["SYSTEMROOT".into(), "TMP".into(), "TEMP".into()];
-  for (k, v) in std::env::vars_os() {
-    let k = k.to_ascii_uppercase();
-    if required_vars.contains(&k) || k.to_string_lossy().starts_with("TAURI") {
-      cmd.env(k, v);
-    }
-  }
-}
-
 // WiX requires versions to be numeric only in a `major.minor.patch.build` format
 pub fn convert_version(version_str: &str) -> anyhow::Result<String> {
   let version = semver::Version::parse(version_str).context("invalid app version")?;
@@ -289,55 +252,93 @@ pub fn convert_version(version_str: &str) -> anyhow::Result<String> {
 
   Ok(version_str.to_string())
 }
-fn run_convert(
-  settings: &Settings,
-  wix_toolset_path: &Path,
-  wxs_file_path: &Path,
+
+fn write_wix_project(
+  project_path: &Path,
+  culture: &str,
+  output_name: &str,
+  output_path: &Path,
 ) -> crate::Result<()> {
-  let cmd_path = wix_toolset_path.join("wix.exe");
-  let path = display_path(wxs_file_path);
-  println!("cmd path: {:?}, exist: {:?}", cmd_path, cmd_path.exists());
-  println!("convert path: {path:?}");
-  match Command::new(cmd_path)
-    .arg("convert")
-    .arg(path)
-    .current_dir(wxs_file_path.parent().unwrap())
-    .spawn()
-  {
-    Ok(mut child) => {
-      let status = child.wait()?;
-      if let Some(err) = child.stderr {
-        println!("error running convert : {:?}", err);
-      }
-      if let Some(out) = child.stdout {
-        println!("output running convert : {:?}", out);
-      }
-      // if !status.success() {
-      //   return Err(crate::Error::GenericError(format!("convert failed with status: {}", status)));
-      // }
-    }
-    Err(e) => {
-      println!("error running convert : {:?}", e);
-      return Err(crate::Error::GenericError(format!(
-        "convert failed with error: {}",
-        e
-      )));
-    }
-  }
+  let project = format!(
+    r#"<Project Sdk="WixToolset.Sdk/7.0.0">
+  <PropertyGroup>
+    <AcceptEula>wix7</AcceptEula>
+    <Cultures>{culture}</Cultures>
+    <OutputName>{output_name}</OutputName>
+    <OutputPath>{output_path}</OutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="WixToolset.UI.wixext" Version="7.0.0" />
+    <PackageReference Include="WixToolset.Util.wixext" Version="7.0.0" />
+  </ItemGroup>
+</Project>
+"#,
+    culture = culture,
+    output_name = output_name,
+    output_path = display_path(output_path),
+  );
+  write(project_path, project)?;
   Ok(())
 }
 
-/// Runs the Candle.exe executable for Wix. Candle parses the wxs file and generates the code for building the installer.
-fn run_candle(
-  settings: &Settings,
-  wix_toolset_path: &Path,
-  cwd: &Path,
-  wxs_file_path: PathBuf,
-  extensions: Vec<PathBuf>,
-) -> crate::Result<()> {
+fn run_dotnet_build(project_path: &Path, build_dir: &Path, arch: &str) -> crate::Result<()> {
+  let status = Command::new("dotnet")
+    .arg("build")
+    .arg(project_path)
+    .arg("-c")
+    .arg("Release")
+    .arg(format!("-p:Platform={arch}"))
+    .current_dir(build_dir)
+    .piped()
+    .map_err(|e| {
+      crate::Error::GenericError(format!(
+        "failed to run `dotnet build`. Install .NET SDK 8.0.x and ensure `dotnet` is on PATH: {e}"
+      ))
+    })?;
+
+  if !status.success() {
+    return Err(crate::Error::GenericError(format!(
+      "dotnet build failed with status: {status}"
+    )));
+  }
+
+  Ok(())
+}
+
+fn find_msi(output_dir: &Path) -> crate::Result<PathBuf> {
+  let mut matches = Vec::new();
+  for entry in walkdir::WalkDir::new(output_dir) {
+    let entry = entry?;
+    if entry.file_type().is_file()
+      && entry
+        .path()
+        .extension()
+        .map(|ext| ext.eq_ignore_ascii_case("msi"))
+        .unwrap_or(false)
+    {
+      matches.push(entry.into_path());
+    }
+  }
+
+  match matches.len() {
+    1 => Ok(matches.remove(0)),
+    0 => Err(crate::Error::GenericError(format!(
+      "dotnet build did not produce an MSI under {}",
+      display_path(output_dir)
+    ))),
+    _ => Err(crate::Error::GenericError(format!(
+      "dotnet build produced multiple MSI files under {}: {:?}",
+      display_path(output_dir),
+      matches
+    ))),
+  }
+}
+
+fn wix_platform(settings: &Settings) -> crate::Result<&'static str> {
   let arch = match settings.binary_arch() {
     "x86_64" => "x64",
     "x86" => "x86",
+    "aarch64" => "arm64",
     target => {
       return Err(crate::Error::ArchError(format!(
         "unsupported target: {}",
@@ -345,168 +346,7 @@ fn run_candle(
       )))
     }
   };
-
-  let main_binary = settings
-    .binaries()
-    .iter()
-    .find(|bin| bin.main())
-    .ok_or_else(|| anyhow::anyhow!("Failed to get main binary"))?;
-
-  let mut args = vec![
-    "-arch".to_string(),
-    arch.to_string(),
-    wxs_file_path.to_string_lossy().to_string(),
-    format!(
-      "-dSourceDir={}",
-      display_path(settings.binary_path(main_binary))
-    ),
-  ];
-
-  if settings
-    .windows()
-    .wix
-    .as_ref()
-    .map(|w| w.fips_compliant)
-    .unwrap_or_default()
-  {
-    args.push("-fips".into());
-  }
-
-  let candle_exe = wix_toolset_path.join("candle.exe");
-
-  info!(action = "Running"; "candle for {:?}", wxs_file_path);
-  let mut cmd = Command::new(candle_exe);
-  for ext in extensions {
-    cmd.arg("-ext");
-    cmd.arg(ext);
-  }
-  clear_env_for_wix(&mut cmd);
-  match cmd.args(&args).current_dir(cwd).spawn() {
-    Ok(mut child) => {
-      let status = child.wait()?;
-      if let Some(err) = child.stderr {
-        println!("error running candle : {:?}", err);
-      }
-      if let Some(out) = child.stdout {
-        println!("output running candle : {:?}", out);
-      }
-      if !status.success() {
-        return Err(crate::Error::GenericError(format!(
-          "candle failed with status: {}",
-          status
-        )));
-      }
-    }
-    Err(e) => {
-      println!("error running candle : {:?}", e);
-      return Err(crate::Error::GenericError(format!(
-        "candle failed with error: {}",
-        e
-      )));
-    }
-  }
-  // .context("error running candle.exe")?;
-
-  Ok(())
-}
-fn run_wix(
-  wix_toolset_path: &Path,
-  build_path: &Path,
-  main_wxs_path: &Path,
-  arguments: Vec<String>,
-  extensions: &HashSet<PathBuf>,
-  output_path: &Path,
-) -> crate::Result<()> {
-  let wix_exe = wix_toolset_path.join("wix.exe");
-
-  let mut args: Vec<String> = vec![
-    "build".to_string(),
-    "-o".to_string(),
-    display_path(output_path),
-    display_path(main_wxs_path),
-  ];
-
-  // args.extend(arguments);
-
-  let mut cmd = Command::new(wix_exe);
-  clear_env_for_wix(&mut cmd);
-  match cmd
-    .args(&args)
-    .current_dir(build_path.parent().unwrap())
-    .spawn()
-  {
-    Ok(mut child) => {
-      let status = child.wait()?;
-      if let Some(err) = child.stderr {
-        println!("error running wix : {:?}", err);
-      }
-      if let Some(out) = child.stdout {
-        println!("output running wix : {:?}", out);
-      }
-      if !status.success() {
-        return Err(crate::Error::GenericError(format!(
-          "wix failed with status: {}",
-          status
-        )));
-      }
-    }
-    Err(e) => {
-      println!("error running wix : {:?}", e);
-      return Err(crate::Error::GenericError(format!(
-        "wix failed with error: {}",
-        e
-      )));
-    }
-  }
-
-  Ok(())
-}
-
-/// Runs the Light.exe file. Light takes the generated code from Candle and produces an MSI Installer.
-fn run_light(
-  wix_toolset_path: &Path,
-  build_path: &Path,
-  arguments: Vec<String>,
-  extensions: &Vec<PathBuf>,
-  output_path: &Path,
-) -> crate::Result<()> {
-  let light_exe = wix_toolset_path.join("light.exe");
-
-  let mut args: Vec<String> = vec!["-o".to_string(), display_path(output_path)];
-
-  args.extend(arguments);
-
-  let mut cmd = Command::new(light_exe);
-  for ext in extensions {
-    cmd.arg("-ext");
-    cmd.arg(ext);
-  }
-  clear_env_for_wix(&mut cmd);
-  match cmd.args(&args).current_dir(build_path).spawn() {
-    Ok(mut child) => {
-      let status = child.wait()?;
-      if let Some(err) = child.stderr {
-        println!("error running light : {:?}", err);
-      }
-      if let Some(out) = child.stdout {
-        println!("output running light : {:?}", out);
-      }
-      if !status.success() {
-        return Err(crate::Error::GenericError(format!(
-          "light failed with status: {}",
-          status
-        )));
-      }
-    }
-    Err(e) => {
-      println!("error running light : {:?}", e);
-      return Err(crate::Error::GenericError(format!(
-        "light failed with error: {}",
-        e
-      )));
-    }
-  }
-  Ok(())
+  Ok(arch)
 }
 
 // fn get_icon_data() -> crate::Result<()> {
@@ -514,25 +354,8 @@ fn run_light(
 // }
 
 // Entry point for bundling and creating the MSI installer. For now the only supported platform is Windows x64.
-pub fn build_wix_app_installer(
-  settings: &Settings,
-  wix_toolset_path: &Path,
-  updater: bool,
-) -> crate::Result<Vec<PathBuf>> {
-  let wix_version = match settings.windows().wix.as_ref().and_then(|x| x.version) {
-    Some(4) => 4,
-    _ => 3,
-  };
-  let arch = match settings.binary_arch() {
-    "x86_64" => "x64",
-    "x86" => "x86",
-    target => {
-      return Err(crate::Error::ArchError(format!(
-        "unsupported target: {}",
-        target
-      )))
-    }
-  };
+pub fn build_wix_app_installer(settings: &Settings, updater: bool) -> crate::Result<Vec<PathBuf>> {
+  let arch = wix_platform(settings)?;
 
   let app_version = convert_version(settings.version_string())?;
 
@@ -744,34 +567,19 @@ pub fn build_wix_app_installer(
   let main_wxs_path = output_path.join("main.wxs");
   write(main_wxs_path.clone(), handlebars.render("main.wxs", &data)?)?;
 
-  let mut fragment_extensions = HashSet::new();
-  //Default extensions
-  fragment_extensions.insert(wix_toolset_path.join("WixUIExtension.dll"));
-  fragment_extensions.insert(wix_toolset_path.join("WixUtilExtension.dll"));
-  if wix_version == 4 {
-    //convert wxs file
-    run_convert(settings, wix_toolset_path, main_wxs_path.clone().as_path())?;
-  } else {
-    let mut candle_inputs = vec![(main_wxs_path.clone(), Vec::new())];
-
-    let current_dir = std::env::current_dir()?;
-    let extension_regex = Regex::new("\"http://schemas.microsoft.com/wix/(\\w+)\"")?;
-    for fragment_path in fragment_paths {
-      let fragment_path = current_dir.join(fragment_path);
-      let fragment = read_to_string(&fragment_path)?;
-      let mut extensions = Vec::new();
-      for cap in extension_regex.captures_iter(&fragment) {
-        extensions.push(wix_toolset_path.join(format!("Wix{}.dll", &cap[1])));
-      }
-      candle_inputs.push((fragment_path, extensions));
-    }
-
-    for (path, extensions) in candle_inputs {
-      for ext in &extensions {
-        fragment_extensions.insert(ext.clone());
-      }
-      run_candle(settings, wix_toolset_path, &output_path, path, extensions)?;
-    }
+  let current_dir = std::env::current_dir()?;
+  for fragment_path in fragment_paths {
+    let fragment_path = current_dir.join(fragment_path);
+    let file_name = fragment_path
+      .file_name()
+      .ok_or_else(|| {
+        crate::Error::GenericError(format!(
+          "failed to get WiX fragment file name for {}",
+          display_path(&fragment_path)
+        ))
+      })?
+      .to_owned();
+    copy(&fragment_path, output_path.join(file_name))?;
   }
 
   let mut output_paths = Vec::new();
@@ -826,46 +634,37 @@ pub fn build_wix_app_installer(
       fileout.write_all(locale_contents.as_bytes())?;
     }
 
-    let arguments = vec![
-      format!(
-        "-cultures:{}",
-        if language == "en-US" {
-          language.to_lowercase()
-        } else {
-          format!("{};en-US", language.to_lowercase())
-        }
-      ),
-      "-loc".into(),
-      display_path(&locale_path),
-      "*.wixobj".into(),
-    ];
-    let msi_output_path = output_path.join("output.msi");
     let msi_path = app_installer_output_path(settings, &language, &app_version, updater)?;
     create_dir_all(msi_path.parent().unwrap())?;
 
-    info!(action = "Running"; "light to produce {}", display_path(&msi_path));
-    if wix_version == 4 {
-      let current_dir = std::env::current_exe()?;
-
-      run_wix(
-        wix_toolset_path,
-        current_dir.as_path(),
-        main_wxs_path.as_path(),
-        arguments,
-        &fragment_extensions,
-        &msi_output_path,
-      )?;
-    } else {
-      run_light(
-        wix_toolset_path,
-        &output_path,
-        arguments,
-        &(fragment_extensions.clone().into_iter().collect()),
-        &msi_output_path,
-      )?;
+    let language_output_path = output_path.join("out").join(&language);
+    if language_output_path.exists() {
+      remove_dir_all(&language_output_path)?;
     }
+    create_dir_all(&language_output_path)?;
 
-    rename(&msi_output_path, &msi_path)?;
+    let output_name = msi_path
+      .file_stem()
+      .and_then(|stem| stem.to_str())
+      .ok_or_else(|| {
+        crate::Error::GenericError(format!(
+          "failed to calculate MSI output name for {}",
+          display_path(&msi_path)
+        ))
+      })?;
+    let project_path = output_path.join(format!("{output_name}.wixproj"));
+    write_wix_project(
+      &project_path,
+      &language.to_lowercase(),
+      output_name,
+      &language_output_path,
+    )?;
+
+    info!(action = "Running"; "dotnet build to produce {}", display_path(&msi_path));
+    run_dotnet_build(&project_path, &output_path, arch)?;
+
+    let generated_msi = find_msi(&language_output_path)?;
+    copy(&generated_msi, &msi_path)?;
     try_sign(&msi_path, settings)?;
     output_paths.push(msi_path);
   }
